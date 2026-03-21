@@ -1,0 +1,81 @@
+ Bien, te lo explico completo. El flujo tiene 5 pasos que repetís en cada fase, y algunos son automáticos.
+
+  ---
+  El ciclo de una fase
+
+  EXPLORE → PROPOSE → SPEC → DESIGN → TASKS → APPLY → VERIFY → ARCHIVE
+
+  Hay dos formas de avanzar: paso a paso (con revisión tuya en cada uno) o fast-forward (3 pasos de un tirón).
+
+  ---
+  Paso a paso con revisión humana (recomendado para fases CRITICO/ALTO)
+
+  # 1. Explore + Propose automático (juntos)
+  /sdd-new "foundation-auth"
+  El agente investiga el dominio usando los knowledge docs y propone un enfoque general.
+  Vos revisás: ¿El alcance tiene sentido? ¿Falta algo? ¿Algo fuera de scope?
+
+  # 2. Spec: requisitos formales (Given/When/Then)
+  /sdd-continue "foundation-auth"
+  Genera los requisitos en formato RFC (MUST, SHALL, SHOULD).
+  Vos revisás: ¿Captura todas las reglas de negocio? ¿Los escenarios son correctos?
+
+  # 3. Design: arquitectura técnica
+  /sdd-continue "foundation-auth"
+  Sequence diagrams, decisiones de arquitectura, qué patrones usar.
+  Vos revisás: ¿El diseño es correcto? ¿Algo que cambiarías?
+
+  # 4. Tasks: lista de tareas implementables
+  /sdd-continue "foundation-auth"
+  Breakdown granular de lo que hay que codear.
+  Vos revisás: ¿Las tareas son claras? ¿El orden tiene sentido?
+
+  ---
+  Fast-forward (para fases BAJO/MEDIO o cuando confiás en el contexto)
+
+  # Hace spec + design + tasks de un tirón
+  /sdd-ff "foundation-auth"
+  Revisás todo al final antes de implementar.
+
+  ---
+  Implementación
+
+  # Implementa en lotes (puede ser varias sesiones)
+  /sdd-apply "foundation-auth"
+  El agente lee spec + design + tasks y escribe código. Podés interrumpir y continuar — guarda el progreso.
+
+  # Valida que lo implementado cumple la spec
+  /sdd-verify "foundation-auth"
+  Corre tests, verifica casos borde, reporta gaps.
+
+  # Cierra la fase y archiva los artefactos
+  /sdd-archive "foundation-auth"
+
+  ---
+  Lo que repetís en cada fase
+
+  1. /sdd-new "nombre-fase"      → revisás propuesta
+  2. /sdd-ff "nombre-fase"       → revisás spec+design+tasks
+  3. /sdd-apply "nombre-fase"    → dejás correr (puede ser varias sesiones)
+  4. /sdd-verify "nombre-fase"   → corregís lo que falta
+  5. /sdd-archive "nombre-fase"  → arrancás la siguiente
+
+  ---
+  Tips importantes
+
+  Para sdd-apply: el agente implementa por lotes. Si una sesión termina sin completar, en la próxima sesión tirás
+  /sdd-apply "foundation-auth" de nuevo — lee el progreso guardado y continúa donde quedó.
+
+  Para las dependencias: no arranques Phase 2 sin archivar Phase 1. El roadmap en openspec/knowledge/00-roadmap.md
+  tiene el orden exacto.
+
+  El -y flag: si querés saltear la revisión humana en algún paso: /sdd-spec "foundation-auth" -y. Usalo solo cuando
+  el contexto sea claro.
+
+  Fases 7-8 en paralelo: realtime-infra (Phase 7) puede correr en paralelo con billing-domain (Phase 6) si querés
+  acelerar — WS Gateway no depende de billing.
+
+  ---
+  Es así de fácil. Abrís JrOpenSpec en Claude Code y arrancás. El primer comando es:
+
+  /sdd-new "foundation-auth"

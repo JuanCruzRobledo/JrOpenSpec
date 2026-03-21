@@ -1,0 +1,47 @@
+schema: spec-driven
+project: integrador
+
+context: |
+  Tech stack: FastAPI 0.115 + SQLAlchemy 2.0 (backend), React 19 + Zustand 5 + TypeScript 5.9 + Vite 7 (3 frontends), WebSocket Gateway, PostgreSQL, Redis
+  Architecture: Clean Architecture (backend) with Domain Services + Repository pattern; Container/Presentational + Screaming Architecture (frontend)
+  Testing: pytest + pytest-asyncio (backend), Vitest 4 + @testing-library/react (frontend)
+  Style: ESLint + typescript-eslint (frontend), no formatter configured (backend)
+  Frontends: Dashboard (port 5177), pwaMenu (5176), pwaWaiter (5178)
+  Backend: REST API (port 8000), WebSocket Gateway (port 8001)
+  Auth: JWT (staff) + Table Token HMAC (diners); access 15min, refresh 7d HttpOnly cookie
+  Prices: stored as cents (integer). IDs: BigInteger (backend) / string (frontend)
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Identify affected modules/packages across monorepo (backend/frontend/ws_gateway)
+    - Note RBAC impact (ADMIN/MANAGER/KITCHEN/WAITER/diner)
+    - Flag governance level: CRITICO / ALTO / MEDIO / BAJO
+  specs:
+    - Use Given/When/Then format for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - Separate frontend and backend specs per domain
+  design:
+    - Include sequence diagrams for complex flows (especially WebSocket + Outbox)
+    - Document architecture decisions with rationale
+    - Note which pattern applies: Outbox vs Direct Redis for events
+  tasks:
+    - Group tasks by phase (infrastructure, implementation, testing)
+    - Use hierarchical numbering (1.1, 1.2, etc.)
+    - Keep tasks small enough to complete in one session
+    - Separate backend tasks from frontend tasks
+  apply:
+    - Follow existing code patterns and conventions
+    - Backend: use Domain Services, NOT CRUDFactory (deprecated)
+    - Frontend: ALWAYS use selectors with Zustand, NEVER destructure store
+    - Use useShallow for filtered/computed arrays
+    - Load relevant coding skills for the project stack
+    tdd: false
+    test_command: ""
+  verify:
+    test_command: ""
+    build_command: ""
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas (large removals)
+    - Update openspec/specs/{domain}/spec.md after archive

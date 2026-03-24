@@ -1,0 +1,14 @@
+change: recipes-promotions
+phase: 13
+status: ready-for-implementation
+artifact_store: openspec
+source: sdd-otro/sprint-13-recipes-promos
+migrated_at: 2026-03-23
+artifacts:
+  proposal: done
+  spec: done
+  design: done
+  tasks: done
+  apply: pending
+  verify: pending
+  archive: pending

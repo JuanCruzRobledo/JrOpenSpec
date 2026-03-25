@@ -1,1 +1,1 @@
-# Shared library for Integrador restaurant management system
+"""Shared package — models, infrastructure, and utilities for the Integrador system."""

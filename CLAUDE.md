@@ -30,7 +30,7 @@ Todo el desarrollo pasa por fases SDD. **No escribir código sin spec aprobada.*
 
 | Doc | Contenido |
 |-----|-----------|
-| `00-roadmap.md` | 11 fases con dependencias y comandos |
+| `00-roadmap.md` | 16 fases con dependencias y comandos |
 | `01-vision-roles.md` | Visión, usuarios, RBAC |
 | `02-arquitectura-stack.md` | Arquitectura, stack, puertos, ADRs |
 | `03-modelo-datos.md` | Modelo de datos completo (54+ entidades) |
@@ -39,31 +39,37 @@ Todo el desarrollo pasa por fases SDD. **No escribir código sin spec aprobada.*
 | `06-eventos-ws.md` | Catálogo de eventos WebSocket |
 | `07-patrones-frontend.md` | React 19, Zustand, i18n, hooks |
 | `08-patrones-backend.md` | FastAPI, Domain Services, Clean Architecture |
+| `09-sprint-planning.md` | Sprint planning, dependencias, camino crítico, asignación devs |
 
-### Roadmap — 11 fases
-Ver `openspec/knowledge/00-roadmap.md` para el detalle completo.
+### Roadmap — 16 fases
+Ver `openspec/knowledge/00-roadmap.md` para el detalle completo (fuente de verdad).
 
-```
-Phase 1:  foundation-auth           (JWT, User, RBAC)
-Phase 2:  tenant-branch-core        (Tenant, Branch, multi-tenant)
-Phase 3:  menu-domain               (Category → Product → Allergen)
-Phase 4:  table-session-domain      (Sector → Table → Session → Diner)
-Phase 5:  order-domain              (Round → RoundItem → KitchenTicket)
-Phase 6:  billing-domain            (Check → Payment → Allocation FIFO)
-Phase 7:  realtime-infra            (WS Gateway + Outbox + Redis Streams)
-Phase 8:  pwa-waiter                (pwaWaiter completo)
-Phase 9:  pwa-menu                  (pwaMenu con i18n y carrito colaborativo)
-Phase 10: dashboard                 (Dashboard Admin — todas las secciones)
-Phase 11: advanced-features         (Customer loyalty, recipes, promotions)
-```
+| Phase | Nombre | Descripción |
+|-------|--------|-------------|
+| 1 | `foundation-infra` | Monorepo, Docker, PostgreSQL, Redis, modelos, Alembic, CI |
+| 2 | `foundation-auth` | JWT, refresh tokens, RBAC Strategy, multi-tenant, rate limiting |
+| 3 | `dashboard-shell` | React 19 + Vite + Zustand shell, auth flow, CRUD reutilizable |
+| 4 | `menu-domain` | Alérgenos, perfiles dietéticos, precios por sucursal, API pública |
+| 5 | `table-staff-domain` | Sectores, mesas FSM, CRUD staff, asignaciones waiter-sector |
+| 6 | `pwa-menu-base` | QR sesión, navegación menú, filtrado alérgenos, i18n, PWA |
+| 7 | `realtime-infra` | WS Gateway, auth JWT+HMAC, Redis Pub/Sub, carrito compartido |
+| 8 | `order-domain` | Rondas FSM, KitchenTickets, Outbox, Redis Streams, vista cocina |
+| 9 | `pwa-waiter` | Auth + gate sector, grilla mesas, comanda, offline, notificaciones |
+| 10 | `billing-base` | ServiceCall FSM, Check, división cuenta, propinas |
+| 11 | `payment-domain` | Pagos manuales, Mercado Pago, cierre mesa saldo cero |
+| 12 | `realtime-resilience` | Circuit breaker, rate limiting Lua, backpressure, reconexión |
+| 13 | `recipes-promotions` | Ingredientes, recetas, motor promociones, sección promos |
+| 14 | `analytics-audit` | Dashboard estadísticas, exportación CSV, Kanban, auditoría |
+| 15 | `pwa-polish` | Workbox, WCAG 2.1 AA, i18n completo, import/export, ayuda |
+| 16 | `production-readiness` | CI/CD, Prometheus, logging, security headers, load testing |
 
 ### Comandos por fase
 ```bash
-/sdd-new "foundation-auth"     # explore + propose automático
-/sdd-ff "foundation-auth"      # spec + design + tasks fast-forward
-/sdd-apply "foundation-auth"   # implementación en lotes
-/sdd-verify "foundation-auth"  # validación
-/sdd-archive "foundation-auth" # cierre
+/sdd-new "foundation-infra"     # explore + propose automático
+/sdd-ff "foundation-infra"      # spec + design + tasks fast-forward
+/sdd-apply "foundation-infra"   # implementación en lotes
+/sdd-verify "foundation-infra"  # validación
+/sdd-archive "foundation-infra" # cierre
 ```
 
 ---
@@ -80,6 +86,45 @@ Skills especializados en `.agent/skills/`. Se cargan automáticamente por contex
 | Crear endpoint o service en backend | `fastapi-domain-service` |
 | Agregar HelpButton a Dashboard | `help-system-content` |
 | Conectar componente a WebSocket | `ws-frontend-subscription` |
+
+### Jerarquía de Skills
+
+**Regla**: Los skills de proyecto (`.agent/skills/`) tienen precedencia sobre los globales (`~/.claude/skills/`) cuando hay solapamiento funcional.
+
+#### Skills con solapamiento (proyecto gana)
+
+| Dominio | Proyecto (`.agent/skills/`) | Global (`~/.claude/skills/`) | Precedencia |
+|---------|---------------------------|------------------------------|-------------|
+| FastAPI / backend | `fastapi-domain-service`, `fastapi-code-review` | `fastapi-clean-arch` | Proyecto |
+| Zustand / React | `zustand-store-pattern`, `react19-form-pattern` | `react19-zustand` | Proyecto |
+| WebSocket frontend | `ws-frontend-subscription` | `websocket-gateway` | Proyecto |
+| Redis | `redis-best-practices` | `redis-patterns` | Proyecto |
+| PWA | `pwa-development` | `pwa-workbox` | Proyecto |
+| Clean Architecture | `clean-architecture` | `fastapi-clean-arch` | Proyecto |
+
+#### Skills exclusivos de proyecto
+
+| Skill | Propósito |
+|-------|-----------|
+| `dashboard-crud-page` | Páginas CRUD del Dashboard |
+| `help-system-content` | HelpButton contextual |
+| `agile-product-owner` | Historias de usuario, sprint planning |
+| `interface-design` | Diseño de interfaces (no marketing) |
+| `vercel-react-best-practices` | Optimización React/Next.js |
+| `websocket-engineer` | Sistemas real-time bidireccionales |
+
+#### Skills exclusivos globales
+
+| Skill | Propósito |
+|-------|-----------|
+| `sdd-*` (8 skills) | Fases del workflow SDD |
+| `skill-creator` | Creación de nuevos skills |
+| `skill-registry` | Registro centralizado de skills |
+| `branch-pr`, `issue-creation` | Workflows GitHub |
+| `jwt-auth-rbac` | Auth JWT y RBAC |
+| `sqlalchemy-multitenant` | Modelos multi-tenant |
+| `tailwind-dark-theme` | Sistema de diseño Tailwind |
+| `go-testing` | Tests Go / Bubbletea (no aplica a este proyecto) |
 
 ---
 

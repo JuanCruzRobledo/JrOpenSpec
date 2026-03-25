@@ -4,6 +4,25 @@
 
 ---
 
+## Índice de ADRs
+
+| ADR | Decisión |
+|-----|----------|
+| [ADR-001](#adr-001-monorepo-con-5-componentes) | Monorepo con 5 componentes |
+| [ADR-002](#adr-002-fastapi--sqlalchemy-20) | FastAPI + SQLAlchemy 2.0 |
+| [ADR-003](#adr-003-zustand-no-redux-no-context) | Zustand (no Redux, no Context) |
+| [ADR-004](#adr-004-jwt--table-token-sin-sessions-server-side) | JWT + Table Token (sin sessions server-side) |
+| [ADR-005](#adr-005-redis-pubsub--streams-no-kafka) | Redis Pub/Sub + Streams (no Kafka) |
+| [ADR-006](#adr-006-outbox-pattern-para-eventos-críticos) | Outbox pattern para eventos críticos |
+| [ADR-007](#adr-007-pwa-no-app-nativa) | PWA (no app nativa) |
+| [ADR-008](#adr-008-soft-delete-no-hard-delete) | Soft delete (no hard delete) |
+| [ADR-009](#adr-009-strategy-pattern-para-rbac) | Strategy pattern para RBAC |
+| [ADR-010](#adr-010-worker-pool-broadcast) | Worker pool broadcast |
+
+> Detalle completo de cada ADR en la sección [Decisiones arquitectónicas](#decisiones-arquitectónicas-adr) al final del documento.
+
+---
+
 ## Estructura del monorepo
 
 ```
@@ -537,18 +556,55 @@ const backendCents = Math.round(price * 100)
 
 ## Decisiones arquitectónicas (ADR)
 
-| ADR | Decisión | Justificación |
-|-----|----------|---------------|
-| ADR-001 | Monorepo con 5 componentes | Balance entre cohesión y despliegue independiente |
-| ADR-002 | FastAPI + SQLAlchemy 2.0 | Async nativo, tipado fuerte, Pydantic integrado |
-| ADR-003 | Zustand (no Redux, no Context) | Mínimo boilerplate, selectores eficientes, persist middleware |
-| ADR-004 | JWT + Table Token (sin sessions server-side) | Stateless para staff, HMAC lightweight para comensales |
-| ADR-005 | Redis Pub/Sub + Streams (no Kafka) | Simplicidad para escala actual; Streams para at-least-once sin infra adicional |
-| ADR-006 | Outbox pattern para eventos críticos | Garantía de entrega sin coordinador distribuido |
-| ADR-007 | PWA (no app nativa) | Cero fricción de instalación, un solo codebase web |
-| ADR-008 | Soft delete (no hard delete) | Auditoría completa, restore capability, cascade logic |
-| ADR-009 | Strategy pattern para RBAC | Extensible, testeable, composable con mixins |
-| ADR-010 | Worker pool broadcast | 25x speedup: 160ms vs 4000ms para 400 usuarios |
+### ADR-001: Monorepo con 5 componentes
+- **Decisión**: Un único repositorio con backend, ws_gateway, Dashboard, pwaMenu y pwaWaiter.
+- **Alternativas descartadas**: Polyrepo (un repo por componente), monolito con frontend embebido.
+- **Justificación**: El monorepo permite compartir código (shared/), coordinar cambios cross-stack en un solo PR, y mantener coherencia de tipos. A diferencia del monolito, cada componente se despliega de forma independiente con su propio Dockerfile y puerto.
+
+### ADR-002: FastAPI + SQLAlchemy 2.0
+- **Decisión**: FastAPI como framework HTTP con SQLAlchemy 2.0 async y asyncpg como driver.
+- **Alternativas descartadas**: Django REST Framework (sync, ORM menos flexible), Express.js (perdería tipado Python).
+- **Justificación**: FastAPI es async-nativo con Pydantic integrado para validación de schemas. SQLAlchemy 2.0 ofrece `Mapped[]` annotations con tipado fuerte y compatibilidad async completa. asyncpg es el driver PostgreSQL más rápido para Python async.
+
+### ADR-003: Zustand (no Redux, no Context)
+- **Decisión**: Zustand como state manager en los 3 frontends.
+- **Alternativas descartadas**: Redux Toolkit (demasiado boilerplate para el caso de uso), React Context (re-renders innecesarios sin selectores nativos).
+- **Justificación**: Zustand ofrece mínimo boilerplate, selectores eficientes que evitan re-renders, persist middleware para localStorage, y se integra con el React Compiler. Los 15+ stores del Dashboard demuestran que escala sin complejidad adicional.
+
+### ADR-004: JWT + Table Token (sin sessions server-side)
+- **Decisión**: JWT para staff (Dashboard, pwaWaiter), HMAC Table Token para comensales (pwaMenu).
+- **Alternativas descartadas**: Sessions server-side con cookies (requiere sticky sessions o session store compartido), OAuth2 completo (sobredimensionado para comensales).
+- **Justificación**: JWT permite auth stateless sin necesidad de consultar la DB en cada request. El Table Token HMAC es lightweight para comensales que no tienen cuenta — se genera con branch_id + table_id + timestamp y dura 3 horas. Ambos esquemas coexisten con Strategy pattern en el WS Gateway.
+
+### ADR-005: Redis Pub/Sub + Streams (no Kafka)
+- **Decisión**: Redis Pub/Sub para eventos de baja criticidad, Redis Streams para eventos críticos (at-least-once).
+- **Alternativas descartadas**: Apache Kafka (infraestructura pesada para la escala actual), RabbitMQ (otro servicio a mantener).
+- **Justificación**: Redis ya se usa para cache, token blacklist y rate limiting — reutilizarlo para mensajería evita agregar infraestructura. Pub/Sub cubre notificaciones en tiempo real. Streams con consumer groups y DLQ cubren eventos críticos (pagos, pedidos) sin infra adicional.
+
+### ADR-006: Outbox pattern para eventos críticos
+- **Decisión**: Eventos críticos (CHECK_PAID, PAYMENT_*, ROUND_SUBMITTED) se escriben como OutboxEvent en PostgreSQL junto al cambio de negocio, y un procesador background los publica a Redis Streams.
+- **Alternativas descartadas**: Publicar directo a Redis desde el endpoint (puede fallar después del commit), Change Data Capture con Debezium (infraestructura compleja).
+- **Justificación**: El Outbox garantiza atomicidad: el evento se persiste en la misma transacción que el dato de negocio. Si Redis falla, el procesador reintenta. Evita la necesidad de un coordinador distribuido o two-phase commit.
+
+### ADR-007: PWA (no app nativa)
+- **Decisión**: Los 3 frontends son Progressive Web Apps, no apps nativas.
+- **Alternativas descartadas**: React Native (doble codebase o limitaciones con web), apps nativas iOS/Android (triplicar esfuerzo de desarrollo).
+- **Justificación**: Cero fricción de instalación — el comensal escanea un QR y accede al menú sin descargar nada. Un solo codebase web para todos los dispositivos. Workbox para cache offline y push notifications cubren los casos de uso del mozo sin necesidad de app store.
+
+### ADR-008: Soft delete (no hard delete)
+- **Decisión**: Todos los modelos usan AuditMixin con `is_active` + `deleted_at` en lugar de DELETE físico.
+- **Alternativas descartadas**: Hard delete con tabla de auditoría separada (duplicación de schema), hard delete con triggers (frágil ante migraciones).
+- **Justificación**: Los datos de restaurante tienen requisitos legales de retención (facturas, pagos). Soft delete provee audit trail completo, capacidad de restaurar entidades, y previene problemas de cascade. BaseRepository filtra `is_active=True` automáticamente.
+
+### ADR-009: Strategy pattern para RBAC
+- **Decisión**: Permisos implementados con Strategy pattern — cada rol tiene su propia estrategia de permisos.
+- **Alternativas descartadas**: Decoradores por endpoint (repetitivo, difícil de testear), middleware global con whitelist (inflexible para reglas por recurso).
+- **Justificación**: Cada estrategia encapsula las reglas de un rol (ADMIN, MANAGER, KITCHEN, WAITER), es testeable en aislamiento, y composable con mixins. Agregar un nuevo rol es crear una nueva estrategia sin modificar código existente — Open/Closed principle.
+
+### ADR-010: Worker pool broadcast
+- **Decisión**: Pool de 10 workers paralelos para broadcast de eventos WebSocket.
+- **Alternativas descartadas**: Broadcast secuencial (4000ms para 400 usuarios), broadcast con asyncio.gather sin pool (sin control de concurrencia).
+- **Justificación**: El broadcast secuencial escala linealmente con los usuarios conectados — inaceptable para tiempo real. El worker pool distribuye las conexiones entre workers paralelos con sharded locks por branch, logrando ~160ms para 400 usuarios (25x mejora). Fallback a batch legacy en caso de fallo del pool.
 
 ---
 

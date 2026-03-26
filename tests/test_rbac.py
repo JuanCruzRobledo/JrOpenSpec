@@ -19,12 +19,12 @@ class TestPermissionContextBranchAccess:
         try:
             from rest_api.app.services.permissions.context import PermissionContext
 
-            ctx = PermissionContext(
-                user_id=1,
-                tenant_id=1,
-                branch_ids=[1, 2],
-                roles=["ADMIN"],
-            )
+            ctx = PermissionContext({
+                "sub": "1",
+                "tenant_id": 1,
+                "branch_ids": [1, 2],
+                "roles": ["ADMIN"],
+            })
             # Should not raise
             ctx.require_branch_access(1)
         except ImportError:
@@ -37,12 +37,12 @@ class TestPermissionContextBranchAccess:
 
             from rest_api.app.services.permissions.context import PermissionContext
 
-            ctx = PermissionContext(
-                user_id=1,
-                tenant_id=1,
-                branch_ids=[1, 2],
-                roles=["MANAGER"],
-            )
+            ctx = PermissionContext({
+                "sub": "1",
+                "tenant_id": 1,
+                "branch_ids": [1, 2],
+                "roles": ["MANAGER"],
+            })
             with pytest.raises(AppError):
                 ctx.require_branch_access(3)
         except ImportError:
@@ -57,12 +57,12 @@ class TestPermissionContextRoleChecks:
         try:
             from rest_api.app.services.permissions.context import PermissionContext
 
-            ctx = PermissionContext(
-                user_id=1,
-                tenant_id=1,
-                branch_ids=[1],
-                roles=["ADMIN"],
-            )
+            ctx = PermissionContext({
+                "sub": "1",
+                "tenant_id": 1,
+                "branch_ids": [1],
+                "roles": ["ADMIN"],
+            })
             ctx.require_admin()
         except ImportError:
             pytest.skip("Batch B not yet merged")
@@ -74,12 +74,12 @@ class TestPermissionContextRoleChecks:
 
             from rest_api.app.services.permissions.context import PermissionContext
 
-            ctx = PermissionContext(
-                user_id=1,
-                tenant_id=1,
-                branch_ids=[1],
-                roles=["WAITER"],
-            )
+            ctx = PermissionContext({
+                "sub": "1",
+                "tenant_id": 1,
+                "branch_ids": [1],
+                "roles": ["WAITER"],
+            })
             with pytest.raises(AppError):
                 ctx.require_admin()
         except ImportError:
@@ -90,12 +90,12 @@ class TestPermissionContextRoleChecks:
         try:
             from rest_api.app.services.permissions.context import PermissionContext
 
-            ctx = PermissionContext(
-                user_id=1,
-                tenant_id=1,
-                branch_ids=[1],
-                roles=["MANAGER"],
-            )
+            ctx = PermissionContext({
+                "sub": "1",
+                "tenant_id": 1,
+                "branch_ids": [1],
+                "roles": ["MANAGER"],
+            })
             ctx.require_management()
         except ImportError:
             pytest.skip("Batch B not yet merged")
@@ -107,12 +107,12 @@ class TestPermissionContextRoleChecks:
 
             from rest_api.app.services.permissions.context import PermissionContext
 
-            ctx = PermissionContext(
-                user_id=1,
-                tenant_id=1,
-                branch_ids=[1],
-                roles=["WAITER"],
-            )
+            ctx = PermissionContext({
+                "sub": "1",
+                "tenant_id": 1,
+                "branch_ids": [1],
+                "roles": ["WAITER"],
+            })
             with pytest.raises(AppError):
                 ctx.require_management()
         except ImportError:
@@ -125,12 +125,12 @@ class TestPermissionContextRoleChecks:
 
             from rest_api.app.services.permissions.context import PermissionContext
 
-            ctx = PermissionContext(
-                user_id=1,
-                tenant_id=1,
-                branch_ids=[1],
-                roles=["KITCHEN"],
-            )
+            ctx = PermissionContext({
+                "sub": "1",
+                "tenant_id": 1,
+                "branch_ids": [1],
+                "roles": ["KITCHEN"],
+            })
             with pytest.raises(AppError):
                 ctx.require_management()
         except ImportError:
@@ -141,12 +141,12 @@ class TestPermissionContextRoleChecks:
         try:
             from rest_api.app.services.permissions.context import PermissionContext
 
-            ctx = PermissionContext(
-                user_id=1,
-                tenant_id=1,
-                branch_ids=[1],
-                roles=["WAITER"],
-            )
+            ctx = PermissionContext({
+                "sub": "1",
+                "tenant_id": 1,
+                "branch_ids": [1],
+                "roles": ["WAITER"],
+            })
             ctx.require_role("WAITER")
         except ImportError:
             pytest.skip("Batch B not yet merged")
@@ -158,12 +158,12 @@ class TestPermissionContextRoleChecks:
 
             from rest_api.app.services.permissions.context import PermissionContext
 
-            ctx = PermissionContext(
-                user_id=1,
-                tenant_id=1,
-                branch_ids=[1],
-                roles=["WAITER"],
-            )
+            ctx = PermissionContext({
+                "sub": "1",
+                "tenant_id": 1,
+                "branch_ids": [1],
+                "roles": ["WAITER"],
+            })
             with pytest.raises(AppError):
                 ctx.require_role("ADMIN")
         except ImportError:
@@ -178,12 +178,12 @@ class TestStrategyDispatch:
         try:
             from rest_api.app.services.permissions.context import PermissionContext
 
-            ctx = PermissionContext(
-                user_id=1,
-                tenant_id=1,
-                branch_ids=[1],
-                roles=["ADMIN"],
-            )
+            ctx = PermissionContext({
+                "sub": "1",
+                "tenant_id": 1,
+                "branch_ids": [1],
+                "roles": ["ADMIN"],
+            })
             # Admin should be able to do most things
             # Exact behavior depends on Batch B's strategy implementation
             assert ctx is not None
@@ -195,12 +195,12 @@ class TestStrategyDispatch:
         try:
             from rest_api.app.services.permissions.context import PermissionContext
 
-            ctx = PermissionContext(
-                user_id=1,
-                tenant_id=1,
-                branch_ids=[1],
-                roles=["WAITER", "MANAGER"],
-            )
+            ctx = PermissionContext({
+                "sub": "1",
+                "tenant_id": 1,
+                "branch_ids": [1],
+                "roles": ["WAITER", "MANAGER"],
+            })
             # MANAGER is higher privilege than WAITER
             # Should be able to do management tasks
             ctx.require_management()

@@ -212,9 +212,13 @@ class TestCORS:
         exposed = response.headers.get("access-control-expose-headers", "")
         assert "x-request-id" in exposed.lower()
 
-    async def test_all_dev_ports_allowed(self, middleware_client):
-        """All localhost dev ports (5173-5180) should be allowed."""
-        for port in range(5173, 5181):
+    async def test_configured_dev_ports_allowed(self, middleware_client):
+        """Configured localhost dev ports should be allowed.
+
+        The actual list depends on CORS_ORIGINS env var or DEFAULT_CORS_ORIGINS.
+        We test the 3 known app ports (Dashboard:5177, pwaMenu:5176, pwaWaiter:5178).
+        """
+        for port in [5176, 5177, 5178]:
             response = await middleware_client.options(
                 "/api/health/live",
                 headers={

@@ -203,7 +203,7 @@ def auth_headers(role: str = "ADMIN") -> dict[str, str]:
         from shared.security.jwt import create_access_token
 
         user_data = TEST_USERS[role]
-        token = create_access_token(
+        token, _jti = create_access_token(
             user_id=int(user_data["sub"]),
             tenant_id=user_data["tenant_id"],
             branch_ids=user_data["branch_ids"],

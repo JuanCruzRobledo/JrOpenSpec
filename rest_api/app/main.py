@@ -8,9 +8,13 @@ from fastapi import FastAPI
 from shared.config import settings
 from shared.infrastructure.db import engine
 from shared.infrastructure.redis import close_redis
+from slowapi.errors import RateLimitExceeded
 
 from rest_api.app.exception_handlers import register_exception_handlers
+from rest_api.app.middleware import register_middlewares
+from rest_api.app.middleware.rate_limit import limiter, rate_limit_exceeded_handler
 from rest_api.app.routers import health
+from rest_api.app.routers.auth.routes import router as auth_router
 
 logger = logging.getLogger(__name__)
 
@@ -62,11 +66,19 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # Exception handlers (Batch B — AppError + validation override)
+    # Rate limiting (slowapi)
+    application.state.limiter = limiter
+    application.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+
+    # Security middlewares + CORS
+    register_middlewares(application)
+
+    # Exception handlers (AppError + validation override)
     register_exception_handlers(application)
 
-    # Register routers
+    # Routers
     application.include_router(health.router, prefix=f"{settings.API_PREFIX}/health")
+    application.include_router(auth_router, prefix=f"{settings.API_PREFIX}/auth")
 
     return application
 

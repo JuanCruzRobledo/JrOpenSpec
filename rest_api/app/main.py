@@ -9,6 +9,7 @@ from shared.config import settings
 from shared.infrastructure.db import engine
 from shared.infrastructure.redis import close_redis
 
+from rest_api.app.exception_handlers import register_exception_handlers
 from rest_api.app.routers import health
 
 logger = logging.getLogger(__name__)
@@ -60,6 +61,9 @@ def create_app() -> FastAPI:
         version="0.1.0",
         lifespan=lifespan,
     )
+
+    # Exception handlers (Batch B — AppError + validation override)
+    register_exception_handlers(application)
 
     # Register routers
     application.include_router(health.router, prefix=f"{settings.API_PREFIX}/health")

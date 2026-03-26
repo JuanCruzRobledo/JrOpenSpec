@@ -1,1 +1,1 @@
-"""Domain services package."""
+"""Domain services for the Integrador REST API."""

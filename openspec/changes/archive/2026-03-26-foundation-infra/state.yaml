@@ -1,14 +1,15 @@
 change: foundation-infra
 phase: 1
-status: ready-for-implementation
+status: archived
 artifact_store: openspec
 source: sdd-otro/sprint-1-infra
 migrated_at: 2026-03-23
+archived_at: 2026-03-26
 artifacts:
   proposal: done
   spec: done
   design: done
   tasks: done
-  apply: pending
-  verify: pending
-  archive: pending
+  apply: done
+  verify: done
+  archive: done

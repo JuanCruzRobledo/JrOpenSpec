@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from shared.config import settings
-from shared.exceptions import AppException, DuplicateError
+from shared.exceptions import AppError, DuplicateError
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ async def safe_commit(session: AsyncSession) -> None:
     except SQLAlchemyError as exc:
         await session.rollback()
         logger.error("SQLAlchemyError during commit: %s", exc)
-        raise AppException(
+        raise AppError(
             message="Database error occurred",
             detail=str(exc),
         ) from exc

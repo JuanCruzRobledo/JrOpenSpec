@@ -10,10 +10,6 @@ Usage:
     # As import
     from rest_api.scripts.seed import run_seed
     await run_seed()
-
-Integration note for Agent 1 (main.py lifespan):
-    In development mode, call `await run_seed()` after migrations.
-    Wrap in try/except — seed failure must NOT crash the API.
 """
 
 from __future__ import annotations
@@ -22,11 +18,7 @@ import asyncio
 import logging
 
 from passlib.context import CryptContext
-from sqlalchemy import select
-
 from shared.infrastructure.db import async_session_factory
-
-# Models are created by Agent 2 — these imports assume they exist
 from shared.models.catalog.allergen import Allergen
 from shared.models.catalog.branch_product import BranchProduct
 from shared.models.catalog.category import Category
@@ -43,6 +35,7 @@ from shared.models.profiles.flavor_profile import FlavorProfile
 from shared.models.profiles.texture_profile import TextureProfile
 from shared.models.room.sector import Sector
 from shared.models.room.table import Table
+from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
@@ -512,8 +505,7 @@ async def _seed_categories_and_products(
         },
     }
 
-    display_order = 0
-    for cat_name, cat_data in catalog.items():
+    for display_order, (cat_name, cat_data) in enumerate(catalog.items()):
         category, cat_created = await _get_or_create(
             session,
             Category,
@@ -523,10 +515,8 @@ async def _seed_categories_and_products(
         if cat_created:
             await session.flush()
             logger.info("  Created category: %s", cat_name)
-        display_order += 1
 
-        sub_order = 0
-        for sub_name, sub_data in cat_data["subcategories"].items():
+        for sub_order, (sub_name, sub_data) in enumerate(cat_data["subcategories"].items()):
             subcategory, sub_created = await _get_or_create(
                 session,
                 Subcategory,
@@ -536,7 +526,6 @@ async def _seed_categories_and_products(
             if sub_created:
                 await session.flush()
                 logger.info("    Created subcategory: %s", sub_name)
-            sub_order += 1
 
             for p in sub_data["products"]:
                 product_defaults = {
@@ -595,28 +584,27 @@ async def run_seed() -> None:
     logger.info("Starting seed data pipeline...")
     logger.info("=" * 60)
 
-    async with async_session_factory() as session:
-        async with session.begin():
-            tenant = await _seed_tenant(session)
-            branch = await _seed_branch(session, tenant)
-            sectors = await _seed_sectors(session, branch)
-            await _seed_tables(session, sectors)
-            await _seed_users(session, tenant, branch)
-            allergens = await _seed_allergens(session)
-            cooking_methods = await _seed_cooking_methods(session, tenant)
-            flavor_profiles = await _seed_flavor_profiles(session, tenant)
-            texture_profiles = await _seed_texture_profiles(session, tenant)
-            cuisine_types = await _seed_cuisine_types(session, tenant)
-            await _seed_categories_and_products(
-                session,
-                tenant,
-                branch,
-                allergens,
-                cooking_methods,
-                flavor_profiles,
-                texture_profiles,
-                cuisine_types,
-            )
+    async with async_session_factory() as session, session.begin():
+        tenant = await _seed_tenant(session)
+        branch = await _seed_branch(session, tenant)
+        sectors = await _seed_sectors(session, branch)
+        await _seed_tables(session, sectors)
+        await _seed_users(session, tenant, branch)
+        allergens = await _seed_allergens(session)
+        cooking_methods = await _seed_cooking_methods(session, tenant)
+        flavor_profiles = await _seed_flavor_profiles(session, tenant)
+        texture_profiles = await _seed_texture_profiles(session, tenant)
+        cuisine_types = await _seed_cuisine_types(session, tenant)
+        await _seed_categories_and_products(
+            session,
+            tenant,
+            branch,
+            allergens,
+            cooking_methods,
+            flavor_profiles,
+            texture_profiles,
+            cuisine_types,
+        )
 
     logger.info("=" * 60)
     logger.info("Seed data pipeline completed successfully!")

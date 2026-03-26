@@ -4,10 +4,9 @@ import logging
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
-from sqlalchemy import text
-
 from shared.infrastructure.db import async_session_factory
 from shared.infrastructure.redis import get_redis
+from sqlalchemy import text
 
 logger = logging.getLogger(__name__)
 

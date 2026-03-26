@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Generic, TypeVar, get_args, get_orig_bases
+from typing import get_args, get_orig_bases
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,10 +12,8 @@ from shared.infrastructure.db import safe_commit
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar("T")
 
-
-class BaseRepository(Generic[T]):
+class BaseRepository[T]:
     """Generic repository providing standard CRUD with soft-delete.
 
     Usage::

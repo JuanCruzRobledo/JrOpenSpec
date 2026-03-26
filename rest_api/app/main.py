@@ -1,16 +1,15 @@
 """FastAPI application factory and lifespan management."""
 
 import logging
-from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-
 from shared.config import settings
 from shared.infrastructure.db import engine
 from shared.infrastructure.redis import close_redis
 
-from app.routers import health
+from rest_api.app.routers import health
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +33,15 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         logger.info("Database connection verified")
     except Exception:
         logger.exception("Failed to verify database connection")
+
+    # Seed development data
+    if settings.ENVIRONMENT in ("development", "dev"):
+        try:
+            from rest_api.scripts.seed import run_seed
+
+            await run_seed()
+        except Exception:
+            logger.exception("Seed failed — continuing without seed data")
 
     yield
 

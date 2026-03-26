@@ -8,7 +8,11 @@ from fastapi import FastAPI
 from shared.config import settings
 from shared.infrastructure.db import engine
 from shared.infrastructure.redis import close_redis
+from slowapi import _rate_limit_exceeded_handler as _slowapi_default_handler  # noqa: F401
+from slowapi.errors import RateLimitExceeded
 
+from rest_api.app.middleware import register_middlewares
+from rest_api.app.middleware.rate_limit import limiter, rate_limit_exceeded_handler
 from rest_api.app.routers import health
 
 logger = logging.getLogger(__name__)
@@ -61,8 +65,33 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # Register routers
+    # --- Rate limiting (slowapi) ---
+    application.state.limiter = limiter
+    application.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+
+    # --- Security middlewares + CORS ---
+    register_middlewares(application)
+
+    # --- Exception handlers from Batch B (wired after merge) ---
+    try:
+        from rest_api.app.exception_handlers import register_exception_handlers
+
+        register_exception_handlers(application)
+        logger.info("Exception handlers registered")
+    except ImportError:
+        logger.debug("Exception handlers not available yet (Batch B pending)")
+
+    # --- Routers ---
     application.include_router(health.router, prefix=f"{settings.API_PREFIX}/health")
+
+    # Auth router from Batch A (wired after merge)
+    try:
+        from rest_api.app.routers.auth.routes import router as auth_router
+
+        application.include_router(auth_router, prefix=f"{settings.API_PREFIX}/auth")
+        logger.info("Auth router registered")
+    except ImportError:
+        logger.debug("Auth router not available yet (Batch A pending)")
 
     return application
 

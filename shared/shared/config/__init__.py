@@ -27,6 +27,22 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     API_PREFIX: str = "/api"
 
+    # JWT / Auth
+    JWT_SECRET: str = "change-me-in-production-min-32-chars!"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_EXPIRE_MINUTES: int = 15
+    JWT_REFRESH_EXPIRE_DAYS: int = 7
+
+    # Table Token (HMAC-SHA256)
+    TABLE_TOKEN_SECRET: str = "change-me-table-token-secret-32ch!"
+
+    # CORS
+    CORS_ORIGINS: str = ""
+
+    # Cookie settings
+    COOKIE_SECURE: bool = False
+    COOKIE_DOMAIN: str | None = None
+
 
 @lru_cache
 def get_settings() -> Settings:

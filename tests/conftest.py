@@ -8,14 +8,13 @@ Provides:
 - Test user creation helpers
 """
 
-import asyncio
 from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from shared.config import settings
 from shared.infrastructure.db import get_db
@@ -26,48 +25,32 @@ from rest_api.app.main import create_app
 
 
 # ---------------------------------------------------------------------------
-# Event loop
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create a single event loop for the entire test session."""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
-
-
-# ---------------------------------------------------------------------------
 # Database fixtures
 # ---------------------------------------------------------------------------
 
 # Use the same DB URL for tests — override with TEST_DATABASE_URL if needed
 _TEST_DB_URL = getattr(settings, "TEST_DATABASE_URL", None) or settings.DATABASE_URL
 
-_test_engine = create_async_engine(_TEST_DB_URL, echo=False)
-_test_session_factory = async_sessionmaker(
-    bind=_test_engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-)
-
-
-@pytest_asyncio.fixture(scope="session")
-async def setup_database():
-    """Create all tables at session start, drop at session end."""
-    async with _test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    yield
-    async with _test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-    await _test_engine.dispose()
+# Track whether tables have been created this session
+_tables_created = False
 
 
 @pytest_asyncio.fixture
-async def db_session(setup_database) -> AsyncGenerator[AsyncSession, None]:
-    """Provide a transactional database session that rolls back after each test."""
-    async with _test_engine.connect() as connection:
+async def db_session() -> AsyncGenerator[AsyncSession, None]:
+    """Provide a transactional database session that rolls back after each test.
+
+    Creates tables on first use (lazy init). Each test gets its own engine
+    and connection to avoid event loop mismatch issues with session-scoped fixtures.
+    """
+    global _tables_created
+    engine = create_async_engine(_TEST_DB_URL, echo=False)
+
+    if not _tables_created:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        _tables_created = True
+
+    async with engine.connect() as connection:
         transaction = await connection.begin()
         session = AsyncSession(bind=connection, expire_on_commit=False)
 
@@ -76,6 +59,8 @@ async def db_session(setup_database) -> AsyncGenerator[AsyncSession, None]:
         finally:
             await session.close()
             await transaction.rollback()
+
+    await engine.dispose()
 
 
 # ---------------------------------------------------------------------------

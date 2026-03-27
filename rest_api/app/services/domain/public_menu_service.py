@@ -1,0 +1,573 @@
+"""Public menu service — assembles menu data with caching and filtering.
+
+Pure business logic — no FastAPI imports.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import logging
+from datetime import UTC, datetime
+
+from sqlalchemy import func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload, selectinload
+
+from shared.exceptions import NotFoundError
+from shared.models.catalog.allergen import Allergen
+from shared.models.catalog.allergen_cross_reaction import AllergenCrossReaction
+from shared.models.catalog.branch_product import BranchProduct
+from shared.models.catalog.category import Category
+from shared.models.catalog.dietary_profile import DietaryProfile
+from shared.models.catalog.product import Product
+from shared.models.catalog.product_allergen import ProductAllergen
+from shared.models.catalog.product_dietary_profile import ProductDietaryProfile
+from shared.models.catalog.subcategory import Subcategory
+from shared.models.core.branch import Branch
+from shared.models.core.tenant import Tenant
+from rest_api.app.services.cache_service import CacheService
+
+logger = logging.getLogger(__name__)
+
+
+class PublicMenuService:
+    """Builds public API responses with Redis caching."""
+
+    def __init__(self, db: AsyncSession, cache: CacheService) -> None:
+        self._db = db
+        self._cache = cache
+
+    # ── Menu ──
+
+    async def get_menu(
+        self,
+        branch_slug: str,
+        dietary: list[str] | None = None,
+        allergen_free: list[str] | None = None,
+    ) -> dict:
+        """Get full menu for a branch, with optional dietary/allergen filtering."""
+        # Build cache key with query params hash
+        cache_key = f"cache:public:menu:{branch_slug}"
+        if dietary or allergen_free:
+            params = f"d={','.join(sorted(dietary or []))}|a={','.join(sorted(allergen_free or []))}"
+            params_hash = hashlib.md5(params.encode()).hexdigest()[:8]
+            cache_key = f"{cache_key}:q:{params_hash}"
+
+        async def _build():
+            return await self._build_menu(branch_slug, dietary, allergen_free)
+
+        return await self._cache.get_or_set(cache_key, _build, ttl=300)
+
+    async def _build_menu(
+        self,
+        branch_slug: str,
+        dietary: list[str] | None,
+        allergen_free: list[str] | None,
+    ) -> dict:
+        """Build the menu response from DB."""
+        # Resolve branch
+        branch = await self._get_branch_by_slug(branch_slug)
+
+        # Build product query
+        stmt = (
+            select(Product)
+            .join(BranchProduct, BranchProduct.product_id == Product.id)
+            .where(
+                BranchProduct.branch_id == branch.id,
+                BranchProduct.is_available.is_(True),
+                Product.deleted_at.is_(None),
+                Product.is_available.is_(True),
+            )
+            .options(
+                joinedload(Product.subcategory).joinedload(Subcategory.category),
+                selectinload(Product.product_allergens).joinedload(ProductAllergen.allergen),
+                selectinload(Product.product_dietary_profiles),
+                selectinload(Product.product_cooking_methods),
+                selectinload(Product.product_badges),
+                selectinload(Product.product_seals),
+                selectinload(Product.branch_products),
+            )
+        )
+
+        # Dietary filter: AND logic
+        if dietary:
+            for code in dietary:
+                stmt = stmt.where(
+                    Product.id.in_(
+                        select(ProductDietaryProfile.product_id)
+                        .join(DietaryProfile, DietaryProfile.id == ProductDietaryProfile.dietary_profile_id)
+                        .where(DietaryProfile.code == code)
+                    )
+                )
+
+        # Allergen-free filter: exclude products containing/may_containing
+        if allergen_free:
+            stmt = stmt.where(
+                ~Product.id.in_(
+                    select(ProductAllergen.product_id)
+                    .join(Allergen, Allergen.id == ProductAllergen.allergen_id)
+                    .where(
+                        Allergen.code.in_(allergen_free),
+                        ProductAllergen.presence_type.in_(["contains", "may_contain"]),
+                    )
+                )
+            )
+
+        result = await self._db.execute(stmt)
+        products = result.scalars().unique().all()
+
+        # Group by category
+        categories_map: dict[int, dict] = {}
+        allergen_codes_used: set[str] = set()
+
+        for product in products:
+            cat = product.subcategory.category if product.subcategory else None
+            if cat is None:
+                continue
+
+            if cat.id not in categories_map:
+                categories_map[cat.id] = {
+                    "id": cat.id,
+                    "name": cat.name,
+                    "slug": cat.slug,
+                    "description": cat.description,
+                    "sortOrder": cat.display_order,
+                    "products": [],
+                }
+
+            # Resolve effective price for this branch
+            bp = next(
+                (bp for bp in product.branch_products if bp.branch_id == branch.id),
+                None,
+            )
+            price_cents = bp.effective_price_cents if bp else product.base_price_cents
+
+            # Allergen summary
+            allergen_summary = {"contains": [], "mayContain": [], "freeOf": []}
+            for pa in product.product_allergens:
+                code = pa.allergen.code
+                allergen_codes_used.add(code)
+                if pa.presence_type == "contains":
+                    allergen_summary["contains"].append(code)
+                elif pa.presence_type == "may_contain":
+                    allergen_summary["mayContain"].append(code)
+                elif pa.presence_type == "free_of":
+                    allergen_summary["freeOf"].append(code)
+
+            # Dietary profile codes
+            dietary_codes = []
+            for pdp in product.product_dietary_profiles:
+                # Load the actual profile to get the code
+                dp_result = await self._db.execute(
+                    select(DietaryProfile).where(DietaryProfile.id == pdp.dietary_profile_id)
+                )
+                dp = dp_result.scalar_one_or_none()
+                if dp:
+                    dietary_codes.append(dp.code)
+
+            # Cooking method codes
+            cooking_codes = []
+            for pcm in product.product_cooking_methods:
+                from shared.models.profiles.cooking_method import CookingMethod
+                cm_result = await self._db.execute(
+                    select(CookingMethod).where(CookingMethod.id == pcm.cooking_method_id)
+                )
+                cm = cm_result.scalar_one_or_none()
+                if cm:
+                    cooking_codes.append(cm.code)
+
+            # Badges
+            badges = []
+            for pb in product.product_badges:
+                from shared.models.marketing.badge import Badge
+                b_result = await self._db.execute(
+                    select(Badge).where(Badge.id == pb.badge_id)
+                )
+                b = b_result.scalar_one_or_none()
+                if b:
+                    badges.append({
+                        "code": b.code, "name": b.name,
+                        "color": b.color, "icon": b.icon,
+                    })
+
+            # Seals
+            seals = []
+            for ps in product.product_seals:
+                from shared.models.marketing.seal import Seal
+                s_result = await self._db.execute(
+                    select(Seal).where(Seal.id == ps.seal_id)
+                )
+                s = s_result.scalar_one_or_none()
+                if s:
+                    seals.append({
+                        "code": s.code, "name": s.name,
+                        "color": s.color, "icon": s.icon,
+                    })
+
+            prod_dict = {
+                "id": product.id,
+                "name": product.name,
+                "shortDescription": product.short_description,
+                "priceCents": price_cents,
+                "imageUrl": product.image_url,
+                "badges": badges,
+                "seals": seals,
+                "dietaryProfiles": dietary_codes,
+                "allergenSummary": allergen_summary,
+                "cookingMethods": cooking_codes,
+                "flavorProfiles": product.flavor_profiles_array or [],
+                "isAvailable": True,
+            }
+            categories_map[cat.id]["products"].append(prod_dict)
+
+        # Sort categories by sortOrder
+        categories = sorted(categories_map.values(), key=lambda c: c["sortOrder"])
+
+        # Allergen legend
+        allergen_legend = []
+        if allergen_codes_used:
+            legend_result = await self._db.execute(
+                select(Allergen).where(
+                    Allergen.code.in_(allergen_codes_used),
+                    Allergen.deleted_at.is_(None),
+                )
+            )
+            for a in legend_result.scalars().all():
+                allergen_legend.append({
+                    "code": a.code,
+                    "name": a.name,
+                    "icon": a.icon,
+                })
+
+        return {
+            "branch": {
+                "id": branch.id,
+                "name": branch.name,
+                "slug": branch.slug,
+                "address": branch.address,
+                "phone": branch.phone,
+                "openNow": branch.is_open,
+            },
+            "categories": categories,
+            "allergenLegend": allergen_legend,
+            "generatedAt": datetime.now(UTC).isoformat(),
+        }
+
+    # ── Product Detail ──
+
+    async def get_product(self, branch_slug: str, product_id: int) -> dict:
+        """Get full product detail for public display."""
+        cache_key = f"cache:public:product:{branch_slug}:{product_id}"
+
+        async def _build():
+            return await self._build_product_detail(branch_slug, product_id)
+
+        return await self._cache.get_or_set(cache_key, _build, ttl=300)
+
+    async def _build_product_detail(self, branch_slug: str, product_id: int) -> dict:
+        """Build product detail response from DB."""
+        branch = await self._get_branch_by_slug(branch_slug)
+
+        result = await self._db.execute(
+            select(Product)
+            .join(BranchProduct, BranchProduct.product_id == Product.id)
+            .where(
+                Product.id == product_id,
+                BranchProduct.branch_id == branch.id,
+                BranchProduct.is_available.is_(True),
+                Product.deleted_at.is_(None),
+            )
+            .options(
+                joinedload(Product.subcategory).joinedload(Subcategory.category),
+                selectinload(Product.product_allergens).joinedload(ProductAllergen.allergen),
+                selectinload(Product.product_dietary_profiles),
+                selectinload(Product.product_cooking_methods),
+                selectinload(Product.ingredients),
+                selectinload(Product.product_badges),
+                selectinload(Product.product_seals),
+                selectinload(Product.branch_products),
+            )
+        )
+        product = result.scalars().unique().first()
+
+        if product is None:
+            raise NotFoundError(message="Product not found or not available in this branch")
+
+        bp = next(
+            (bp for bp in product.branch_products if bp.branch_id == branch.id),
+            None,
+        )
+        price_cents = bp.effective_price_cents if bp else product.base_price_cents
+
+        # Allergens with cross-reactions
+        allergens = []
+        for pa in product.product_allergens:
+            a = pa.allergen
+            # Load cross-reactions for this allergen
+            cr_result = await self._db.execute(
+                select(AllergenCrossReaction)
+                .where(
+                    or_(
+                        AllergenCrossReaction.allergen_id == a.id,
+                        AllergenCrossReaction.related_allergen_id == a.id,
+                    )
+                )
+                .options(
+                    selectinload(AllergenCrossReaction.allergen),
+                    selectinload(AllergenCrossReaction.related_allergen),
+                )
+            )
+            cross_reactions = []
+            for cr in cr_result.scalars().all():
+                related = cr.related_allergen if cr.allergen_id == a.id else cr.allergen
+                cross_reactions.append({
+                    "code": related.code,
+                    "name": related.name,
+                    "description": cr.description,
+                    "severity": cr.severity,
+                })
+
+            allergens.append({
+                "code": a.code,
+                "name": a.name,
+                "icon": a.icon,
+                "presenceType": pa.presence_type,
+                "riskLevel": pa.risk_level,
+                "notes": pa.notes,
+                "crossReactions": cross_reactions,
+            })
+
+        # Dietary profiles
+        dietary_profiles = []
+        for pdp in product.product_dietary_profiles:
+            dp_result = await self._db.execute(
+                select(DietaryProfile).where(DietaryProfile.id == pdp.dietary_profile_id)
+            )
+            dp = dp_result.scalar_one_or_none()
+            if dp:
+                dietary_profiles.append({"code": dp.code, "name": dp.name, "icon": dp.icon})
+
+        # Cooking methods
+        cooking_methods = []
+        for pcm in product.product_cooking_methods:
+            from shared.models.profiles.cooking_method import CookingMethod
+            cm_result = await self._db.execute(
+                select(CookingMethod).where(CookingMethod.id == pcm.cooking_method_id)
+            )
+            cm = cm_result.scalar_one_or_none()
+            if cm:
+                cooking_methods.append({"code": cm.code, "name": cm.name, "icon": cm.icon})
+
+        # Ingredients
+        ingredients = [
+            {
+                "name": i.name,
+                "quantity": float(i.quantity),
+                "unit": i.unit,
+                "isOptional": i.is_optional,
+            }
+            for i in sorted(product.ingredients, key=lambda x: x.sort_order)
+        ]
+
+        # Badges
+        badges = []
+        for pb in product.product_badges:
+            from shared.models.marketing.badge import Badge
+            b_result = await self._db.execute(select(Badge).where(Badge.id == pb.badge_id))
+            b = b_result.scalar_one_or_none()
+            if b:
+                badges.append({"code": b.code, "name": b.name, "color": b.color, "icon": b.icon})
+
+        # Seals
+        seals = []
+        for ps in product.product_seals:
+            from shared.models.marketing.seal import Seal
+            s_result = await self._db.execute(select(Seal).where(Seal.id == ps.seal_id))
+            s = s_result.scalar_one_or_none()
+            if s:
+                seals.append({"code": s.code, "name": s.name, "color": s.color, "icon": s.icon})
+
+        cat = product.subcategory.category if product.subcategory else None
+
+        return {
+            "id": product.id,
+            "name": product.name,
+            "description": product.description,
+            "shortDescription": product.short_description,
+            "priceCents": price_cents,
+            "imageUrl": product.image_url,
+            "badges": badges,
+            "seals": seals,
+            "dietaryProfiles": dietary_profiles,
+            "allergens": allergens,
+            "cookingMethods": cooking_methods,
+            "flavorProfiles": product.flavor_profiles_array or [],
+            "textureProfiles": product.texture_profiles_array or [],
+            "ingredients": ingredients,
+            "branch": {
+                "id": branch.id,
+                "name": branch.name,
+                "slug": branch.slug,
+            },
+            "category": {
+                "id": cat.id if cat else 0,
+                "name": cat.name if cat else "",
+                "slug": cat.slug if cat else "",
+            },
+            "generatedAt": datetime.now(UTC).isoformat(),
+        }
+
+    # ── Branches ──
+
+    async def get_branches(self, tenant_slug: str) -> dict:
+        """Get active branches for a tenant."""
+        cache_key = f"cache:public:branches:{tenant_slug}"
+
+        async def _build():
+            return await self._build_branches(tenant_slug)
+
+        return await self._cache.get_or_set(cache_key, _build, ttl=300)
+
+    async def _build_branches(self, tenant_slug: str) -> dict:
+        """Build branches response from DB."""
+        tenant = await self._get_tenant_by_slug(tenant_slug)
+
+        result = await self._db.execute(
+            select(Branch).where(
+                Branch.tenant_id == tenant.id,
+                Branch.deleted_at.is_(None),
+                Branch.is_active.is_(True),
+            ).order_by(Branch.display_order)
+        )
+        branches = result.scalars().all()
+
+        items = []
+        for b in branches:
+            # Count products
+            prod_count = (await self._db.execute(
+                select(func.count(BranchProduct.id)).where(
+                    BranchProduct.branch_id == b.id,
+                    BranchProduct.is_available.is_(True),
+                )
+            )).scalar() or 0
+
+            # Count categories (distinct)
+            cat_count = (await self._db.execute(
+                select(func.count(func.distinct(Category.id)))
+                .join(Subcategory, Subcategory.category_id == Category.id)
+                .join(Product, Product.subcategory_id == Subcategory.id)
+                .join(BranchProduct, BranchProduct.product_id == Product.id)
+                .where(
+                    BranchProduct.branch_id == b.id,
+                    BranchProduct.is_available.is_(True),
+                    Product.deleted_at.is_(None),
+                    Category.deleted_at.is_(None),
+                )
+            )).scalar() or 0
+
+            items.append({
+                "id": b.id,
+                "name": b.name,
+                "slug": b.slug,
+                "address": b.address,
+                "phone": b.phone,
+                "latitude": b.latitude,
+                "longitude": b.longitude,
+                "openNow": b.is_open,
+                "productCount": prod_count,
+                "categoryCount": cat_count,
+            })
+
+        return {
+            "branches": items,
+            "generatedAt": datetime.now(UTC).isoformat(),
+        }
+
+    # ── Allergens Catalog ──
+
+    async def get_allergens(self, tenant_slug: str) -> dict:
+        """Get allergen catalog with cross-reactions."""
+        cache_key = f"cache:public:allergens:{tenant_slug}"
+
+        async def _build():
+            return await self._build_allergens(tenant_slug)
+
+        return await self._cache.get_or_set(cache_key, _build, ttl=300)
+
+    async def _build_allergens(self, tenant_slug: str) -> dict:
+        """Build allergens response from DB."""
+        tenant = await self._get_tenant_by_slug(tenant_slug)
+
+        result = await self._db.execute(
+            select(Allergen).where(
+                or_(Allergen.tenant_id.is_(None), Allergen.tenant_id == tenant.id),
+                Allergen.deleted_at.is_(None),
+            ).order_by(Allergen.is_system.desc(), Allergen.name)
+        )
+        allergens = result.scalars().all()
+
+        items = []
+        for a in allergens:
+            # Load cross-reactions
+            cr_result = await self._db.execute(
+                select(AllergenCrossReaction)
+                .where(
+                    or_(
+                        AllergenCrossReaction.allergen_id == a.id,
+                        AllergenCrossReaction.related_allergen_id == a.id,
+                    )
+                )
+                .options(
+                    selectinload(AllergenCrossReaction.allergen),
+                    selectinload(AllergenCrossReaction.related_allergen),
+                )
+            )
+            cross_reactions = []
+            for cr in cr_result.scalars().all():
+                related = cr.related_allergen if cr.allergen_id == a.id else cr.allergen
+                cross_reactions.append({
+                    "relatedCode": related.code,
+                    "relatedName": related.name,
+                    "description": cr.description,
+                    "severity": cr.severity,
+                })
+
+            items.append({
+                "code": a.code,
+                "name": a.name,
+                "description": a.description,
+                "icon": a.icon,
+                "isSystem": a.is_system,
+                "crossReactions": cross_reactions,
+            })
+
+        return {
+            "allergens": items,
+            "generatedAt": datetime.now(UTC).isoformat(),
+        }
+
+    # ── Helpers ──
+
+    async def _get_branch_by_slug(self, slug: str) -> Branch:
+        result = await self._db.execute(
+            select(Branch).where(
+                Branch.slug == slug,
+                Branch.deleted_at.is_(None),
+            )
+        )
+        branch = result.scalar_one_or_none()
+        if branch is None:
+            raise NotFoundError(message="Branch not found")
+        return branch
+
+    async def _get_tenant_by_slug(self, slug: str) -> Tenant:
+        result = await self._db.execute(
+            select(Tenant).where(
+                Tenant.slug == slug,
+                Tenant.deleted_at.is_(None),
+            )
+        )
+        tenant = result.scalar_one_or_none()
+        if tenant is None:
+            raise NotFoundError(message="Tenant not found")
+        return tenant

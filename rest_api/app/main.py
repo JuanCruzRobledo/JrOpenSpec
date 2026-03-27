@@ -15,6 +15,8 @@ from rest_api.app.middleware import register_middlewares
 from rest_api.app.middleware.rate_limit import limiter, rate_limit_exceeded_handler
 from rest_api.app.routers import health
 from rest_api.app.routers.auth.routes import router as auth_router
+from rest_api.app.routers.dashboard import dashboard_router
+from rest_api.app.routers.public import public_router
 from rest_api.app.routers.v1 import v1_router
 
 logger = logging.getLogger(__name__)
@@ -81,8 +83,11 @@ def create_app() -> FastAPI:
     application.include_router(health.router, prefix=f"{settings.API_PREFIX}/health")
     application.include_router(auth_router, prefix=f"{settings.API_PREFIX}/auth")
     application.include_router(v1_router, prefix=f"{settings.API_PREFIX}/v1")
+    application.include_router(dashboard_router, prefix=f"{settings.API_PREFIX}/dashboard")
+    application.include_router(public_router, prefix=f"{settings.API_PREFIX}/public")
 
     return application
 
 
 app = create_app()
+# phase4

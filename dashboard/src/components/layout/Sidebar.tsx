@@ -70,6 +70,48 @@ function PackageIcon() {
   );
 }
 
+function ShieldIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  );
+}
+
+function HeartIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+    </svg>
+  );
+}
+
+function FlameIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z" />
+    </svg>
+  );
+}
+
+function TagIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
+      <line x1="7" y1="7" x2="7.01" y2="7" />
+    </svg>
+  );
+}
+
+function AwardIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="8" r="7" />
+      <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" />
+    </svg>
+  );
+}
+
 interface Props {}
 
 export function Sidebar(_props: Props) {
@@ -116,6 +158,14 @@ export function Sidebar(_props: Props) {
           <SidebarItem to="/categorias" label="Categorias" icon={<GridIcon />} collapsed={collapsed} />
           <SidebarItem to="/subcategorias" label="Subcategorias" icon={<LayersIcon />} collapsed={collapsed} />
           <SidebarItem to="/productos" label="Productos" icon={<PackageIcon />} collapsed={collapsed} />
+        </SidebarGroup>
+
+        <SidebarGroup label="Menu Avanzado" collapsed={collapsed}>
+          <SidebarItem to="/alergenos" label="Alergenos" icon={<ShieldIcon />} collapsed={collapsed} />
+          <SidebarItem to="/perfiles-dieteticos" label="Perfiles Dieteticos" icon={<HeartIcon />} collapsed={collapsed} />
+          <SidebarItem to="/metodos-coccion" label="Metodos Coccion" icon={<FlameIcon />} collapsed={collapsed} />
+          <SidebarItem to="/badges" label="Badges" icon={<TagIcon />} collapsed={collapsed} />
+          <SidebarItem to="/sellos" label="Sellos" icon={<AwardIcon />} collapsed={collapsed} />
         </SidebarGroup>
       </nav>
 

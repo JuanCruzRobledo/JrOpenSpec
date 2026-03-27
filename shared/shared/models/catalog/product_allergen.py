@@ -1,10 +1,10 @@
-"""ProductAllergen model — association between products and allergens with severity."""
+"""ProductAllergen model — association between products and allergens with presence type and risk."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, ForeignKey, String, UniqueConstraint
+from sqlalchemy import BigInteger, CheckConstraint, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from shared.models.base import BaseModel
@@ -15,19 +15,34 @@ if TYPE_CHECKING:
 
 
 class ProductAllergen(BaseModel):
-    """Links a product to an allergen with severity level (contains, may_contain, trace)."""
+    """Links a product to an allergen with presence type and risk level."""
 
     __table_args__ = (
-        UniqueConstraint("product_id", "allergen_id", name="uq_product_allergens_product_allergen"),
+        UniqueConstraint(
+            "product_id", "allergen_id",
+            name="uq_product_allergens_product_allergen",
+        ),
+        CheckConstraint(
+            "presence_type != 'free_of' OR risk_level = 'low'",
+            name="ck_product_allergens_free_of_low_risk",
+        ),
     )
 
     product_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("products.id"), nullable=False, index=True
+        BigInteger, ForeignKey("products.id", ondelete="CASCADE"),
+        nullable=False, index=True,
     )
     allergen_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("allergens.id"), nullable=False, index=True
+        BigInteger, ForeignKey("allergens.id", ondelete="CASCADE"),
+        nullable=False, index=True,
     )
-    severity: Mapped[str] = mapped_column(String(20), nullable=False, default="contains")
+    presence_type: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="contains"
+    )
+    risk_level: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="moderate"
+    )
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
     product: Mapped[Product] = relationship("Product", back_populates="product_allergens")

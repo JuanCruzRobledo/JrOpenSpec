@@ -8,4 +8,9 @@ export const ROUTES = {
   CATEGORIES: '/categorias',
   SUBCATEGORIES: '/subcategorias',
   PRODUCTS: '/productos',
+  ALLERGENS: '/alergenos',
+  DIETARY_PROFILES: '/perfiles-dieteticos',
+  COOKING_METHODS: '/metodos-coccion',
+  BADGES: '/badges',
+  SEALS: '/sellos',
 } as const;

@@ -1,6 +1,7 @@
 /**
  * Products CRUD page — scoped to selected branch.
  * Prices displayed in pesos, sent to API in cents.
+ * Includes batch price update and tabbed product form.
  */
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Table, type TableColumn } from '@/components/ui/Table';
@@ -10,7 +11,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { HelpButton } from '@/components/ui/HelpButton';
-import { ProductForm } from '@/components/forms/ProductForm';
+import { ProductFormTabs } from '@/components/forms/ProductFormTabs';
+import { BatchPriceModal } from '@/components/forms/BatchPriceModal';
 import { useCrud } from '@/hooks/useCrud';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useBranch } from '@/hooks/useBranch';
@@ -33,6 +35,10 @@ export default function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+
+  // Batch price state
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
 
   // Load categories and subcategories for the product form dropdowns
   useEffect(() => {
@@ -98,7 +104,46 @@ export default function ProductsPage() {
     setEditingProduct(null);
   }, []);
 
+  const handleToggleSelect = useCallback((productId: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(productId)) {
+        next.delete(productId);
+      } else {
+        next.add(productId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSelectAll = useCallback(() => {
+    if (selectedIds.size === crud.items.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(crud.items.map((p) => p.id)));
+    }
+  }, [crud.items, selectedIds.size]);
+
+  const handleBatchSuccess = useCallback(() => {
+    setIsBatchModalOpen(false);
+    setSelectedIds(new Set());
+    crud.refresh();
+  }, [crud]);
+
   const columns: TableColumn<Product>[] = useMemo(() => [
+    {
+      key: 'select',
+      header: '',
+      className: 'w-10',
+      render: (p) => (
+        <input
+          type="checkbox"
+          checked={selectedIds.has(p.id)}
+          onChange={() => handleToggleSelect(p.id)}
+          className="h-4 w-4 rounded border-border-default bg-bg-surface text-accent focus:ring-accent"
+        />
+      ),
+    },
     {
       key: 'nombre',
       header: 'Nombre',
@@ -143,16 +188,6 @@ export default function ProductsPage() {
       ),
     },
     {
-      key: 'popular',
-      header: 'Popular',
-      className: 'w-24 text-center',
-      render: (p) => (
-        <span className="text-lg" title={p.popular ? 'Popular' : ''}>
-          {p.popular ? '🔥' : ''}
-        </span>
-      ),
-    },
-    {
       key: 'acciones',
       header: 'Acciones',
       className: 'text-right',
@@ -167,7 +202,7 @@ export default function ProductsPage() {
         </div>
       ),
     },
-  ], [handleEdit, handleDelete]);
+  ], [handleEdit, handleDelete, selectedIds, handleToggleSelect]);
 
   return (
     <div>
@@ -180,14 +215,36 @@ export default function ProductsPage() {
         </div>
         <div className="flex items-center gap-3">
           <HelpButton content={helpContent.products} />
+          {selectedIds.size > 0 ? (
+            <Button variant="secondary" onClick={() => setIsBatchModalOpen(true)}>
+              Actualizar Precios ({selectedIds.size})
+            </Button>
+          ) : null}
           <Button onClick={handleCreate}>Crear producto</Button>
         </div>
       </div>
 
+      {/* Select all toggle */}
+      {crud.items.length > 0 ? (
+        <div className="mb-3 flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={selectedIds.size === crud.items.length && crud.items.length > 0}
+            onChange={handleSelectAll}
+            className="h-4 w-4 rounded border-border-default bg-bg-surface text-accent focus:ring-accent"
+          />
+          <span className="text-xs text-text-secondary">
+            {selectedIds.size > 0
+              ? `${selectedIds.size} seleccionado(s)`
+              : 'Seleccionar todos'}
+          </span>
+        </div>
+      ) : null}
+
       {!crud.isLoading && crud.items.length === 0 && !crud.error ? (
         <EmptyState
           title="No hay productos"
-          description="Crea tu primer producto para armarel menu."
+          description="Crea tu primer producto para armar el menu."
           actionLabel="Crear producto"
           onAction={handleCreate}
         />
@@ -223,7 +280,7 @@ export default function ProductsPage() {
         onClose={handleFormCancel}
         title={editingProduct ? 'Editar producto' : 'Crear producto'}
       >
-        <ProductForm
+        <ProductFormTabs
           key={editingProduct?.id ?? 'new'}
           product={editingProduct}
           categories={categories}
@@ -234,6 +291,13 @@ export default function ProductsPage() {
           updateFn={crud.update}
         />
       </Modal>
+
+      <BatchPriceModal
+        isOpen={isBatchModalOpen}
+        onClose={() => setIsBatchModalOpen(false)}
+        selectedProductIds={Array.from(selectedIds)}
+        onSuccess={handleBatchSuccess}
+      />
     </div>
   );
 }

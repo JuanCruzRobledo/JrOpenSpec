@@ -14,6 +14,11 @@ const BranchesPage = lazy(() => import('@/pages/BranchesPage'));
 const CategoriesPage = lazy(() => import('@/pages/CategoriesPage'));
 const SubcategoriesPage = lazy(() => import('@/pages/SubcategoriesPage'));
 const ProductsPage = lazy(() => import('@/pages/ProductsPage'));
+const AllergensPage = lazy(() => import('@/pages/AllergensPage'));
+const DietaryProfilesPage = lazy(() => import('@/pages/DietaryProfilesPage'));
+const CookingMethodsPage = lazy(() => import('@/pages/CookingMethodsPage'));
+const BadgesPage = lazy(() => import('@/pages/BadgesPage'));
+const SealsPage = lazy(() => import('@/pages/SealsPage'));
 
 function PageLoader() {
   return (
@@ -105,6 +110,47 @@ export const router = createBrowserRouter([
                 ),
               },
             ],
+          },
+          // Menu Avanzado — no branch guard required (tenant-scoped)
+          {
+            path: 'alergenos',
+            element: (
+              <SuspenseWrapper>
+                <AllergensPage />
+              </SuspenseWrapper>
+            ),
+          },
+          {
+            path: 'perfiles-dieteticos',
+            element: (
+              <SuspenseWrapper>
+                <DietaryProfilesPage />
+              </SuspenseWrapper>
+            ),
+          },
+          {
+            path: 'metodos-coccion',
+            element: (
+              <SuspenseWrapper>
+                <CookingMethodsPage />
+              </SuspenseWrapper>
+            ),
+          },
+          {
+            path: 'badges',
+            element: (
+              <SuspenseWrapper>
+                <BadgesPage />
+              </SuspenseWrapper>
+            ),
+          },
+          {
+            path: 'sellos',
+            element: (
+              <SuspenseWrapper>
+                <SealsPage />
+              </SuspenseWrapper>
+            ),
           },
         ],
       },

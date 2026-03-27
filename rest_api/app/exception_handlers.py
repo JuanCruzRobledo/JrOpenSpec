@@ -38,9 +38,14 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
             exc.message,
         )
 
+    # Derive error code from exception class name (e.g. ConflictError -> CONFLICT_ERROR)
+    import re as _re
+    class_name = type(exc).__name__
+    code = _re.sub(r"(?<=[a-z0-9])([A-Z])", r"_\1", class_name).upper()
+
     return JSONResponse(
         status_code=status_code,
-        content={"detail": exc.message},
+        content={"detail": exc.message, "code": code},
     )
 
 
@@ -69,7 +74,7 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
 
     return JSONResponse(
         status_code=422,
-        content={"detail": detail},
+        content={"detail": detail, "code": "VALIDATION_ERROR"},
     )
 
 

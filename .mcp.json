@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "postgres-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@crystaldba/postgres-mcp",
+        "postgresql://buensabor:buensabor_dev_2024@localhost:5432/buensabor"
+      ]
+    }
+  }
+}

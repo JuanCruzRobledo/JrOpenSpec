@@ -72,7 +72,14 @@ async def _seed_tenant(session) -> Tenant:
         session,
         Tenant,
         {"slug": "buen-sabor"},
-        {"name": "Buen Sabor"},
+        {
+            "name": "Buen Sabor",
+            "description": "Restaurante de comida argentina con las mejores pastas, carnes y postres.",
+            "banner_url": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200",
+            "phone": "+54 261 555-0000",
+            "email": "info@buensabor.com",
+            "address": "Mendoza, Argentina",
+        },
     )
     if created:
         await session.flush()
@@ -92,6 +99,11 @@ async def _seed_branch(session, tenant: Tenant) -> Branch:
             "name": "Sede Central",
             "address": "Av. San Martín 1234, Mendoza",
             "phone": "+54 261 555-0100",
+            "email": "central@buensabor.com",
+            "image_url": "https://images.unsplash.com/photo-1552566626-52f8b828add9?w=600",
+            "opening_time": "11:30",
+            "closing_time": "00:00",
+            "display_order": 0,
             "latitude": -32.8895,
             "longitude": -68.8458,
         },
@@ -346,7 +358,7 @@ async def _seed_categories_and_products(
                     "products": [
                         {"name": "Empanada de Carne", "slug": "empanada-carne", "price": 850, "prep": 15,
                          "cooking": "Al horno", "flavor": "Salado", "cuisine": "Argentina",
-                         "allergens": ["gluten", "eggs"]},
+                         "allergens": ["gluten", "eggs"], "popular": True},
                         {"name": "Empanada de Jamón y Queso", "slug": "empanada-jamon-queso", "price": 850, "prep": 15,
                          "cooking": "Al horno", "flavor": "Salado", "cuisine": "Argentina",
                          "allergens": ["gluten", "milk"]},
@@ -392,12 +404,13 @@ async def _seed_categories_and_products(
                     "slug": "carnes",
                     "products": [
                         {"name": "Bife de Chorizo", "slug": "bife-chorizo", "price": 6500, "prep": 30,
-                         "cooking": "A la parrilla", "flavor": "Umami", "texture": "Firme", "cuisine": "Argentina"},
+                         "cooking": "A la parrilla", "flavor": "Umami", "texture": "Firme", "cuisine": "Argentina",
+                         "featured": True, "popular": True},
                         {"name": "Asado de Tira", "slug": "asado-tira", "price": 5800, "prep": 45,
                          "cooking": "A la parrilla", "flavor": "Umami", "texture": "Firme", "cuisine": "Argentina"},
                         {"name": "Milanesa Napolitana", "slug": "milanesa-napolitana", "price": 5200, "prep": 25,
                          "cooking": "Frito", "flavor": "Salado", "texture": "Crocante", "cuisine": "Argentina",
-                         "allergens": ["gluten", "eggs", "milk"]},
+                         "allergens": ["gluten", "eggs", "milk"], "featured": True, "popular": True},
                         {"name": "Pollo al Horno con Hierbas", "slug": "pollo-horno-hierbas", "price": 4800, "prep": 35,
                          "cooking": "Al horno", "flavor": "Salado", "cuisine": "Argentina"},
                     ],
@@ -407,7 +420,7 @@ async def _seed_categories_and_products(
                     "products": [
                         {"name": "Salmón Grillado", "slug": "salmon-grillado", "price": 7200, "prep": 20,
                          "cooking": "A la parrilla", "flavor": "Umami", "cuisine": "Francesa",
-                         "allergens": ["fish"]},
+                         "allergens": ["fish"], "featured": True},
                         {"name": "Merluza al Limón", "slug": "merluza-limon", "price": 5500, "prep": 20,
                          "cooking": "Al horno", "flavor": "Ácido", "cuisine": "Argentina",
                          "allergens": ["fish"]},
@@ -426,7 +439,7 @@ async def _seed_categories_and_products(
                     "products": [
                         {"name": "Tiramisú", "slug": "tiramisu", "price": 3200, "prep": 10,
                          "flavor": "Dulce", "texture": "Cremoso", "cuisine": "Italiana",
-                         "allergens": ["gluten", "eggs", "milk"]},
+                         "allergens": ["gluten", "eggs", "milk"], "featured": True},
                         {"name": "Flan Casero", "slug": "flan-casero", "price": 2500, "prep": 5,
                          "flavor": "Dulce", "texture": "Cremoso", "cuisine": "Argentina",
                          "allergens": ["eggs", "milk"]},
@@ -505,12 +518,27 @@ async def _seed_categories_and_products(
         },
     }
 
+    # Icon mapping per category
+    cat_icons = {
+        "Entradas": "🥟",
+        "Platos Principales": "🥩",
+        "Postres": "🍰",
+        "Bebidas": "🍷",
+        "Guarniciones": "🥗",
+    }
+
     for display_order, (cat_name, cat_data) in enumerate(catalog.items()):
         category, cat_created = await _get_or_create(
             session,
             Category,
             {"tenant_id": tenant.id, "slug": cat_data["slug"]},
-            {"name": cat_name, "display_order": display_order},
+            {
+                "name": cat_name,
+                "branch_id": branch.id,
+                "icon": cat_icons.get(cat_name),
+                "display_order": display_order,
+                "is_home": display_order == 0,  # First category is home
+            },
         )
         if cat_created:
             await session.flush()
@@ -533,6 +561,8 @@ async def _seed_categories_and_products(
                     "base_price_cents": p["price"],
                     "prep_time_minutes": p.get("prep"),
                     "subcategory_id": subcategory.id,
+                    "is_featured": p.get("featured", False),
+                    "is_popular": p.get("popular", False),
                 }
 
                 # Assign profile FKs if provided

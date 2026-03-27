@@ -59,6 +59,23 @@ services:
     networks:
       - buen-sabor-net
 
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: integrador-dashboard
+    ports:
+      - "5177:5177"
+    volumes:
+      - ./dashboard/src:/app/src
+      - ./dashboard/index.html:/app/index.html
+      - ./dashboard/vite.config.ts:/app/vite.config.ts
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - buen-sabor-net
+
   gateway:
     build:
       context: .

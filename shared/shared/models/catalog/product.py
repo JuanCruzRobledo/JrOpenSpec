@@ -43,6 +43,8 @@ class Product(BaseModel):
     prep_time_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_available: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_visible_in_menu: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    is_popular: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     cooking_method_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("cooking_methods.id"), nullable=True
     )

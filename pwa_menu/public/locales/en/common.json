@@ -1,0 +1,49 @@
+{
+  "app": {
+    "name": "Digital Menu",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "close": "Close",
+    "back": "Back",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "ok": "OK",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "language": {
+    "label": "Language",
+    "es": "Español",
+    "en": "English",
+    "pt": "Português"
+  },
+  "offline": {
+    "banner": "Offline — showing cached data",
+    "stale": "Data may be outdated",
+    "lastUpdated": "Last updated: {{time}}"
+  },
+  "pwa": {
+    "install": {
+      "title": "Add to home screen",
+      "description": "Install the menu for faster access",
+      "button": "Install",
+      "dismiss": "Not now"
+    },
+    "update": {
+      "message": "New version available",
+      "button": "Update"
+    }
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "network": "Connection error. Check your internet.",
+    "notFound": "Not found",
+    "unauthorized": "Session expired. Please sign in again.",
+    "timeout": "Request timed out. Please try again."
+  },
+  "anonymous": "Anonymous"
+}

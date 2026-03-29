@@ -1,0 +1,42 @@
+{
+  "title": "Allergens",
+  "presence": {
+    "contains": "Contains",
+    "may_contain": "May contain",
+    "free": "Free from"
+  },
+  "riskLevel": {
+    "low": "Low risk",
+    "medium": "Medium risk",
+    "high": "High risk"
+  },
+  "crossReactions": {
+    "title": "Cross-reactions",
+    "with": "Cross-reaction with {{allergen}}",
+    "expand": "Show cross-reactions",
+    "collapse": "Hide cross-reactions",
+    "none": "No known cross-reactions"
+  },
+  "names": {
+    "gluten": "Gluten",
+    "crustaceos": "Crustaceans",
+    "huevos": "Eggs",
+    "pescado": "Fish",
+    "cacahuetes": "Peanuts",
+    "soja": "Soy",
+    "lacteos": "Dairy",
+    "frutos_de_cascara": "Tree nuts",
+    "apio": "Celery",
+    "mostaza": "Mustard",
+    "sesamo": "Sesame",
+    "dioxido_de_azufre": "Sulphur dioxide and sulphites",
+    "altramuces": "Lupin",
+    "moluscos": "Molluscs"
+  },
+  "disclaimer": "Allergen information is indicative. Consult staff if in doubt.",
+  "legend": {
+    "contains": "Contains this allergen",
+    "may_contain": "May contain traces",
+    "free": "Does not contain this allergen"
+  }
+}

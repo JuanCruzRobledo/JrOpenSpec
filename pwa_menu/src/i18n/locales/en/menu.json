@@ -1,0 +1,55 @@
+{
+  "search": {
+    "placeholder": "Search products...",
+    "ariaLabel": "Search the menu",
+    "clearAriaLabel": "Clear search",
+    "noResults": "No products found for \"{{query}}\"",
+    "noResultsHint": "Try different words or clear the filters"
+  },
+  "categories": {
+    "all": "All",
+    "ariaLabel": "Menu categories"
+  },
+  "product": {
+    "unavailable": "Unavailable",
+    "noDescription": "No description",
+    "price": "Price: {{price}}",
+    "viewDetail": "View details for {{name}}",
+    "imageAlt": "Image of {{name}}",
+    "badgesCount_one": "{{count}} badge",
+    "badgesCount_other": "{{count}} badges",
+    "preparationTime": "{{minutes}} min",
+    "portionSize": "Portion: {{size}}",
+    "calories": "{{kcal}} kcal"
+  },
+  "detail": {
+    "title": "Product detail",
+    "ingredients": "Ingredients",
+    "allergens": "Allergens",
+    "dietary": "Dietary profiles",
+    "cookingMethods": "Cooking methods",
+    "flavorProfile": "Flavor profile",
+    "textureProfile": "Texture",
+    "noIngredients": "No ingredient information",
+    "noAllergens": "No allergens declared",
+    "noDietary": "No dietary profile",
+    "noCooking": "No cooking information",
+    "optional": "(optional)"
+  },
+  "empty": {
+    "title": "No products",
+    "description": "No products found with the selected filters",
+    "clearFilters": "Clear filters"
+  },
+  "loading": "Loading menu...",
+  "error": "Could not load the menu",
+  "stale": "Menu outdated — refreshing...",
+  "updated": "Menu updated",
+  "bottomBar": {
+    "ariaLabel": "Quick actions",
+    "callWaiter": "Call waiter",
+    "history": "Order history",
+    "myBill": "My bill",
+    "comingSoon": "Coming soon"
+  }
+}

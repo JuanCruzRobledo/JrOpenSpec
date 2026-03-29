@@ -1,0 +1,48 @@
+{
+  "search": {
+    "placeholder": "Buscar produtos...",
+    "ariaLabel": "Buscar no cardápio",
+    "clearAriaLabel": "Limpar busca",
+    "noResults": "Nenhum produto encontrado para \"{{query}}\"",
+    "noResultsHint": "Tente outras palavras ou limpe os filtros"
+  },
+  "categories": {
+    "all": "Tudo",
+    "ariaLabel": "Categorias do cardápio"
+  },
+  "product": {
+    "unavailable": "Indisponível",
+    "noDescription": "Sem descrição",
+    "price": "Preço: {{price}}",
+    "viewDetail": "Ver detalhes de {{name}}",
+    "imageAlt": "Imagem de {{name}}",
+    "badgesCount_one": "{{count}} distintivo",
+    "badgesCount_other": "{{count}} distintivos",
+    "preparationTime": "{{minutes}} min",
+    "portionSize": "Porção: {{size}}",
+    "calories": "{{kcal}} kcal"
+  },
+  "detail": {
+    "title": "Detalhes do produto",
+    "ingredients": "Ingredientes",
+    "allergens": "Alérgenos",
+    "dietary": "Perfis dietéticos",
+    "cookingMethods": "Métodos de preparo",
+    "flavorProfile": "Perfil de sabor",
+    "textureProfile": "Textura",
+    "noIngredients": "Sem informação de ingredientes",
+    "noAllergens": "Nenhum alérgeno declarado",
+    "noDietary": "Sem perfil dietético",
+    "noCooking": "Sem informação de preparo",
+    "optional": "(opcional)"
+  },
+  "empty": {
+    "title": "Sem produtos",
+    "description": "Nenhum produto encontrado com os filtros selecionados",
+    "clearFilters": "Limpar filtros"
+  },
+  "loading": "Carregando cardápio...",
+  "error": "Não foi possível carregar o cardápio",
+  "stale": "Cardápio desatualizado — atualizando...",
+  "updated": "Cardápio atualizado"
+}

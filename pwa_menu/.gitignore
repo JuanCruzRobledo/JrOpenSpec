@@ -1,0 +1,13 @@
+node_modules
+dist
+dist-ssr
+*.local
+.env
+!.env.example
+
+# Vite build artifacts
+/public/sw.js
+/public/workbox-*.js
+
+# TypeScript
+*.tsbuildinfo

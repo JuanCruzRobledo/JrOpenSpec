@@ -1,0 +1,35 @@
+{
+  "title": "Filters",
+  "active_one": "{{count}} active filter",
+  "active_other": "{{count}} active filters",
+  "clearAll": "Clear all",
+  "apply": "Apply",
+  "close": "Close filters",
+  "ariaLabel": "Filters panel",
+  "allergenMode": {
+    "label": "Allergen filter mode",
+    "off": "Off",
+    "offDescription": "Show all products",
+    "strict": "Strict",
+    "strictDescription": "Hide products that CONTAIN the selected allergens",
+    "very_strict": "Very strict",
+    "very_strictDescription": "Hide products that contain or may contain the selected allergens, including cross-reactions"
+  },
+  "allergens": {
+    "title": "Allergens to avoid",
+    "hint": "Select the allergens you want to filter out",
+    "selected_one": "{{count}} allergen selected",
+    "selected_other": "{{count}} allergens selected",
+    "ariaLabel": "Filter by allergen {{name}}"
+  },
+  "dietary": {
+    "title": "Dietary profile",
+    "hint": "Only show products matching ALL selected profiles",
+    "ariaLabel": "Filter by dietary profile {{name}}"
+  },
+  "cooking": {
+    "title": "Cooking method",
+    "hint": "Show products using AT LEAST ONE selected method",
+    "ariaLabel": "Filter by cooking method {{name}}"
+  }
+}

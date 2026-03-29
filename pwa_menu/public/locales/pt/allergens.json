@@ -1,0 +1,42 @@
+{
+  "title": "Alérgenos",
+  "presence": {
+    "contains": "Contém",
+    "may_contain": "Pode conter",
+    "free": "Livre de"
+  },
+  "riskLevel": {
+    "low": "Risco baixo",
+    "medium": "Risco médio",
+    "high": "Risco alto"
+  },
+  "crossReactions": {
+    "title": "Reações cruzadas",
+    "with": "Reação cruzada com {{allergen}}",
+    "expand": "Ver reações cruzadas",
+    "collapse": "Ocultar reações cruzadas",
+    "none": "Sem reações cruzadas conhecidas"
+  },
+  "names": {
+    "gluten": "Glúten",
+    "crustaceos": "Crustáceos",
+    "huevos": "Ovos",
+    "pescado": "Peixe",
+    "cacahuetes": "Amendoim",
+    "soja": "Soja",
+    "lacteos": "Laticínios",
+    "frutos_de_cascara": "Nozes",
+    "apio": "Aipo",
+    "mostaza": "Mostarda",
+    "sesamo": "Gergelim",
+    "dioxido_de_azufre": "Dióxido de enxofre e sulfitos",
+    "altramuces": "Tremoço",
+    "moluscos": "Moluscos"
+  },
+  "disclaimer": "As informações sobre alérgenos são indicativas. Consulte a equipe em caso de dúvida.",
+  "legend": {
+    "contains": "Contém este alérgeno",
+    "may_contain": "Pode conter traços",
+    "free": "Não contém este alérgeno"
+  }
+}

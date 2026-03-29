@@ -1,0 +1,26 @@
+{
+  "landing": {
+    "title": "Bem-vindo ao {{branchName}}",
+    "subtitle": "Mesa {{tableName}}",
+    "description": "Digite seu nome para personalizar sua experiência",
+    "nameLabel": "Seu nome (opcional)",
+    "namePlaceholder": "Ex: João",
+    "nameMaxLength": "Máximo 50 caracteres",
+    "colorLabel": "Escolha sua cor",
+    "joinButton": "Entrar no cardápio",
+    "joining": "Entrando...",
+    "anonymous": "Anonimo"
+  },
+  "errors": {
+    "joinFailed": "Não foi possível entrar. Tente novamente.",
+    "branchNotFound": "Estabelecimento não encontrado.",
+    "tableInactive": "Esta mesa não está disponível.",
+    "sessionExpired": "Sua sessão expirou. Escaneie o QR code novamente.",
+    "invalidQR": "O código QR não é válido."
+  },
+  "session": {
+    "active": "Sessão ativa",
+    "table": "Mesa {{name}}",
+    "branch": "{{name}}"
+  }
+}

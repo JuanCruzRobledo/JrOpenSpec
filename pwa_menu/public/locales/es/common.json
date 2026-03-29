@@ -1,0 +1,49 @@
+{
+  "app": {
+    "name": "Menú Digital",
+    "loading": "Cargando...",
+    "error": "Ocurrió un error",
+    "retry": "Reintentar",
+    "close": "Cerrar",
+    "back": "Volver",
+    "confirm": "Confirmar",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "ok": "Aceptar",
+    "yes": "Sí",
+    "no": "No"
+  },
+  "language": {
+    "label": "Idioma",
+    "es": "Español",
+    "en": "English",
+    "pt": "Português"
+  },
+  "offline": {
+    "banner": "Sin conexión — mostrando datos en caché",
+    "stale": "Datos desactualizados",
+    "lastUpdated": "Última actualización: {{time}}"
+  },
+  "pwa": {
+    "install": {
+      "title": "Agregar al inicio",
+      "description": "Instalá el menú para acceder más rápido",
+      "button": "Instalar",
+      "dismiss": "Ahora no"
+    },
+    "update": {
+      "message": "Nueva versión disponible",
+      "button": "Actualizar"
+    }
+  },
+  "errors": {
+    "generic": "Algo salió mal. Intentá de nuevo.",
+    "network": "Error de conexión. Verificá tu internet.",
+    "notFound": "No encontrado",
+    "unauthorized": "Sesión expirada. Ingresá de nuevo.",
+    "timeout": "La solicitud tardó demasiado. Intentá de nuevo."
+  },
+  "anonymous": "Anónimo"
+}

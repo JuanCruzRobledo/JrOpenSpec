@@ -1,0 +1,193 @@
+@import "tailwindcss";
+
+/* ============================================================
+   TailwindCSS 4 — CSS-first theme (no tailwind.config.ts)
+   Dark + orange palette with allergen traffic-light system
+   ============================================================ */
+@theme {
+  /* Background scale */
+  --color-bg-primary: #0a0a0a;
+  --color-bg-surface: #171717;
+  --color-bg-elevated: #262626;
+
+  /* Brand accent */
+  --color-accent: #f97316;
+  --color-accent-hover: #ea580c;
+
+  /* Text scale */
+  --color-text-primary: #fafafa;
+  --color-text-secondary: #a3a3a3;
+  --color-text-tertiary: #737373;
+
+  /* Borders */
+  --color-border-default: #262626;
+  --color-border-focus: #f97316;
+
+  /* Semantic status colors */
+  --color-success: #22c55e;
+  --color-error: #ef4444;
+  --color-warning: #eab308;
+  --color-info: #3b82f6;
+
+  /* Allergen traffic-light — contains (red) */
+  --color-allergen-contains-bg: rgba(239, 68, 68, 0.2);
+  --color-allergen-contains-border: #ef4444;
+  --color-allergen-contains-text: #fca5a5;
+
+  /* Allergen traffic-light — may contain (amber) */
+  --color-allergen-may-contain-bg: rgba(249, 115, 22, 0.2);
+  --color-allergen-may-contain-border: #f59e0b;
+  --color-allergen-may-contain-text: #fcd34d;
+
+  /* Allergen traffic-light — free (green) */
+  --color-allergen-free-bg: rgba(34, 197, 94, 0.2);
+  --color-allergen-free-border: #22c55e;
+  --color-allergen-free-text: #86efac;
+
+  /* Typography */
+  --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* ── Semantic surface aliases (used by component layer) ──────────────── */
+  /* These map to the raw bg/text tokens above for consistent component theming.
+     Defined as direct color values (not CSS var references) so TailwindCSS 4
+     can generate the correct bg-surface-* / text-surface-* utility classes. */
+  --color-surface-bg: #0a0a0a;
+  --color-surface-card: #262626;
+  --color-surface-muted: #171717;
+  --color-surface-border: #262626;
+  --color-surface-text: #fafafa;
+
+  /* Keyframe durations */
+  --duration-slide-up: 300ms;
+  --duration-slide-in: 250ms;
+
+  /* Custom animations — registered so Tailwind generates animate-* utilities */
+  --animate-slide-up: slide-up var(--duration-slide-up) ease-out both;
+  --animate-slide-in: slide-in var(--duration-slide-in) ease-out both;
+  --animate-slide-in-right: slide-in-right var(--duration-slide-in) ease-out both;
+}
+
+/* ============================================================
+   Base resets and global styles
+   ============================================================ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* Smooth scroll for category section jumps */
+  scroll-behavior: smooth;
+  /* Safe areas for notched devices */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Prevent horizontal overflow on mobile */
+  overflow-x: hidden;
+}
+
+/* ============================================================
+   prefers-reduced-motion — disable all transitions/animations
+   Accessibility requirement per WCAG 2.1 AA
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================
+   Focus visible — keyboard navigation ring
+   ============================================================ */
+:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ============================================================
+   Scrollbar customization (webkit)
+   ============================================================ */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-default);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}
+
+/* ============================================================
+   Custom animations — Modal, Toast, Drawer
+   ============================================================ */
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up var(--duration-slide-up, 300ms) ease-out both;
+}
+
+.animate-slide-in {
+  animation: slide-in var(--duration-slide-in, 250ms) ease-out both;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right var(--duration-slide-in, 250ms) ease-out both;
+}
+

@@ -1,0 +1,66 @@
+{
+  "app": {
+    "name": "Cardápio Digital",
+    "loading": "Carregando...",
+    "error": "Ocorreu um erro",
+    "retry": "Tentar novamente",
+    "close": "Fechar",
+    "back": "Voltar",
+    "confirm": "Confirmar",
+    "cancel": "Cancelar",
+    "save": "Salvar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "ok": "OK",
+    "yes": "Sim",
+    "no": "Não"
+  },
+  "language": {
+    "label": "Idioma",
+    "es": "Español",
+    "en": "English",
+    "pt": "Português"
+  },
+  "offline": {
+    "banner": "Sem conexão — exibindo dados em cache",
+    "message": "Você está sem conexão",
+    "stale": "Dados podem estar desatualizados",
+    "lastUpdated": "Última atualização: {{time}}"
+  },
+  "installBanner": {
+    "title": "Adicione o cardápio à sua tela inicial para acesso mais rápido",
+    "install": "Instalar",
+    "dismiss": "Agora não"
+  },
+  "swUpdate": {
+    "message": "Nova versão disponível",
+    "action": "Atualizar"
+  },
+  "pwa": {
+    "install": {
+      "title": "Adicionar à tela inicial",
+      "description": "Instale o cardápio para acesso mais rápido",
+      "button": "Instalar",
+      "dismiss": "Agora não"
+    },
+    "update": {
+      "message": "Nova versão disponível",
+      "button": "Atualizar"
+    }
+  },
+  "errors": {
+    "generic": "Algo deu errado. Tente novamente.",
+    "network": "Erro de conexão. Verifique sua internet.",
+    "notFound": "Não encontrado",
+    "unauthorized": "Sessão expirada. Entre novamente.",
+    "timeout": "A solicitação demorou muito. Tente novamente."
+  },
+  "anonymous": "Anonimo",
+  "header": {
+    "table": "Mesa",
+    "filters": "Filtros",
+    "filtersActive_one": "{{count}} filtro ativo",
+    "filtersActive_other": "{{count}} filtros ativos",
+    "userAvatar": "Avatar de {{name}}"
+  }
+}

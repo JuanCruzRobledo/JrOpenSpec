@@ -1,0 +1,26 @@
+{
+  "landing": {
+    "title": "Welcome to {{branchName}}",
+    "subtitle": "Table {{tableName}}",
+    "description": "Enter your name to personalize your experience",
+    "nameLabel": "Your name (optional)",
+    "namePlaceholder": "e.g. John",
+    "nameMaxLength": "Maximum 50 characters",
+    "colorLabel": "Choose your color",
+    "joinButton": "Enter menu",
+    "joining": "Joining...",
+    "anonymous": "Anonymous"
+  },
+  "errors": {
+    "joinFailed": "Could not join. Please try again.",
+    "branchNotFound": "Branch not found.",
+    "tableInactive": "This table is not available.",
+    "sessionExpired": "Your session expired. Scan the QR code again.",
+    "invalidQR": "The QR code is not valid."
+  },
+  "session": {
+    "active": "Active session",
+    "table": "Table {{name}}",
+    "branch": "{{name}}"
+  }
+}

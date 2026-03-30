@@ -41,6 +41,11 @@
     "description": "No products found with the selected filters",
     "clearFilters": "Clear filters"
   },
+  "crossReactionFeedback": {
+    "title_one": "{{count}} product was hidden due to a cross-reaction",
+    "title_other": "{{count}} products were hidden due to cross-reactions",
+    "description": "Very strict mode is active: products with {{crossReactions}} were also hidden because they cross-react with {{selectedAllergens}}."
+  },
   "loading": "Loading menu...",
   "error": "Could not load the menu",
   "stale": "Menu outdated — refreshing...",
@@ -51,5 +56,8 @@
     "history": "Order history",
     "myBill": "My bill",
     "comingSoon": "Coming soon"
+  },
+  "meta": {
+    "description": "Digital menu of {{branchName}}."
   }
 }

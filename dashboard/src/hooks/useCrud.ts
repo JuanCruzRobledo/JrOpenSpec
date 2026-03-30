@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePagination } from '@/hooks/usePagination';
 import { useToast } from '@/hooks/useToast';
 import { logger } from '@/lib/logger';
@@ -8,8 +8,8 @@ interface UseCrudOptions<T, TCreate, TUpdate> {
   /** Fetch function — receives pagination params (and branchId is already bound by the caller) */
   fetchFn: (params: PaginationParams) => Promise<PaginatedResponse<T>>;
   createFn: (data: TCreate) => Promise<T>;
-  updateFn: (id: number, data: TUpdate) => Promise<T>;
-  deleteFn: (id: number) => Promise<void>;
+  updateFn: (id: string, data: TUpdate) => Promise<T>;
+  deleteFn: (id: string) => Promise<void>;
   entityName: string;
   pageSize?: number;
 }
@@ -23,8 +23,8 @@ interface UseCrudReturn<T, TCreate, TUpdate> {
   setPage: (page: number) => void;
   refresh: () => Promise<void>;
   create: (data: TCreate) => Promise<T | null>;
-  update: (id: number, data: TUpdate) => Promise<T | null>;
-  remove: (id: number) => Promise<boolean>;
+  update: (id: string, data: TUpdate) => Promise<T | null>;
+  remove: (id: string) => Promise<boolean>;
 }
 
 /**
@@ -45,11 +45,15 @@ export function useCrud<T, TCreate, TUpdate>(
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Stable ref so refresh doesn't re-create on every render when fetchFn identity changes
+  const fetchFnRef = useRef(fetchFn);
+  fetchFnRef.current = fetchFn;
+
   const refresh = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetchFn({ page, limit });
+      const res = await fetchFnRef.current({ page, limit });
       setItems(res.data);
       setTotal(res.meta.total);
     } catch (err) {
@@ -59,7 +63,7 @@ export function useCrud<T, TCreate, TUpdate>(
     } finally {
       setIsLoading(false);
     }
-  }, [fetchFn, page, limit, entityName, setTotal]);
+  }, [page, limit, entityName, setTotal]);
 
   // Fetch on mount and when page changes
   useEffect(() => {
@@ -80,7 +84,7 @@ export function useCrud<T, TCreate, TUpdate>(
     }
   };
 
-  const update = async (id: number, data: TUpdate): Promise<T | null> => {
+  const update = async (id: string, data: TUpdate): Promise<T | null> => {
     try {
       const result = await updateFn(id, data);
       toast.success(`${entityName} actualizado/a exitosamente`);
@@ -94,7 +98,7 @@ export function useCrud<T, TCreate, TUpdate>(
     }
   };
 
-  const remove = async (id: number): Promise<boolean> => {
+  const remove = async (id: string): Promise<boolean> => {
     try {
       await deleteFn(id);
       toast.success(`${entityName} eliminado/a exitosamente`);

@@ -91,7 +91,11 @@ const useUiStore = create<UiStoreState>()((set, get) => ({
   },
 
   addToast(message, variant = 'info') {
-    const id = crypto.randomUUID();
+    // crypto.randomUUID() requires a secure context (HTTPS/localhost).
+    // Fallback for LAN testing over plain HTTP.
+    const id = typeof crypto?.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2) + Date.now().toString(36);
     const expiresAt = Date.now() + TOAST_DURATION_MS;
     const toast: Toast = { id, message, variant, expiresAt };
 

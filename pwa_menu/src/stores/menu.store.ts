@@ -83,6 +83,7 @@ const useMenuStore = create<MenuStoreState>()(
     }),
     {
       name: 'buen-sabor-menu-cache',
+      version: 1,
       // Only persist the data and fetchedAt — not loading/error states
       partialize: (state) => ({
         data: state.data,

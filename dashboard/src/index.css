@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Prevent double scrollbars — layout scrolls via the inner content area only */
+body {
+  overflow: hidden;
+}
+
 @theme {
   --color-bg-primary: #0a0a0a;
   --color-bg-surface: #171717;

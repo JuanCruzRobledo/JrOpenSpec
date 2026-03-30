@@ -39,6 +39,19 @@ class RefreshToken(BaseModel):
     revoked_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, default=None
     )
+    replaced_by_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("refresh_tokens.id"),
+        nullable=True,
+        default=None,
+        index=True,
+    )
 
     # Relationships
     user: Mapped[User] = relationship("User")
+    replaced_by: Mapped[RefreshToken | None] = relationship(
+        "RefreshToken",
+        remote_side="RefreshToken.id",
+        foreign_keys=[replaced_by_id],
+        post_update=True,
+    )

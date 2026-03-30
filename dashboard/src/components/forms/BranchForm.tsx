@@ -17,7 +17,7 @@ interface Props {
   onSuccess: () => void;
   onCancel: () => void;
   createFn: (data: BranchCreate) => Promise<Branch | null>;
-  updateFn: (id: number, data: BranchUpdate) => Promise<Branch | null>;
+  updateFn: (id: string, data: BranchUpdate) => Promise<Branch | null>;
 }
 
 /**
@@ -56,11 +56,12 @@ export function BranchForm({ branch, onSuccess, onCancel, createFn, updateFn }: 
 
       try {
         const data = { nombre, direccion, telefono, email, imagen_url, horario_apertura, horario_cierre, estado, orden };
+        const savedBranch = isEditing && branch
+          ? await updateFn(branch.id, data)
+          : await createFn(data);
 
-        if (isEditing && branch) {
-          await updateFn(branch.id, data);
-        } else {
-          await createFn(data);
+        if (!savedBranch) {
+          return { isSuccess: false, errors: {} };
         }
 
         onSuccess();

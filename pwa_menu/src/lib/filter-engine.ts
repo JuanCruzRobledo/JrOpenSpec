@@ -1,6 +1,13 @@
 import type { MenuProduct, MenuCategory } from '@/types/menu';
+import type { AllergenCatalogItem } from '@/types/allergen-catalog';
 import type { AllergenMode } from '@/types/filters';
 import { searchIncludes } from '@/lib/text';
+
+export interface CrossReactionHiddenSummary {
+  readonly hiddenProductCount: number;
+  readonly selectedAllergenNames: string[];
+  readonly crossReactionAllergenNames: string[];
+}
 
 /**
  * Pure filter function for menu products.
@@ -73,14 +80,11 @@ export function filterProducts(
         if (hasConflict) return false;
       } else if (allergenFilter.mode === 'very_strict') {
         // Very strict: expanded allergens, hide if contains OR may contain
-        const hasConflict = expandedAllergens.some((code) =>
-          product.allergenSlugs.includes(code)
+        const hasConflict = expandedAllergens.some(
+          (code) =>
+            product.allergenSlugs.includes(code) || product.mayContainSlugs.includes(code)
         );
         if (hasConflict) return false;
-        // Note: MenuProduct only has allergenSlugs (contains). The mayContain
-        // check would require the full ProductDetail. For quick-filter purposes,
-        // very_strict with expanded cross-reactions is the best we can do from
-        // the menu list. Full mayContain info is shown in the detail modal.
       }
     }
 
@@ -102,6 +106,92 @@ export function filterProducts(
 
     return true;
   });
+}
+
+function flattenProducts(categories: MenuCategory[]): MenuProduct[] {
+  return categories.flatMap((category) =>
+    category.subcategories.flatMap((subcategory) => subcategory.products)
+  );
+}
+
+function getAllergenName(slug: string, namesBySlug: Map<string, string>): string {
+  return namesBySlug.get(slug) ?? slug;
+}
+
+/**
+ * Computes feedback for products hidden exclusively by cross-reactions while
+ * very_strict allergen filtering is active.
+ */
+export function summarizeCrossReactionHiddenProducts(
+  categories: MenuCategory[],
+  allergenFilter: { codes: string[]; mode: AllergenMode },
+  crossReactionMap: Map<string, string[]>,
+  catalog: AllergenCatalogItem[]
+): CrossReactionHiddenSummary | null {
+  if (allergenFilter.mode !== 'very_strict' || allergenFilter.codes.length === 0) {
+    return null;
+  }
+
+  const selectedSet = new Set(allergenFilter.codes);
+  const namesBySlug = new Map(catalog.map((item) => [item.slug, item.name]));
+  const crossReactionSources = new Map<string, Set<string>>();
+
+  for (const selected of allergenFilter.codes) {
+    const crossReactions = crossReactionMap.get(selected) ?? [];
+    for (const related of crossReactions) {
+      if (selectedSet.has(related)) {
+        continue;
+      }
+
+      const sources = crossReactionSources.get(related) ?? new Set<string>();
+      sources.add(selected);
+      crossReactionSources.set(related, sources);
+    }
+  }
+
+  if (crossReactionSources.size === 0) {
+    return null;
+  }
+
+  let hiddenProductCount = 0;
+  const selectedAllergenNames = new Set<string>();
+  const crossReactionAllergenNames = new Set<string>();
+
+  for (const product of flattenProducts(categories)) {
+    const matchedAllergens = new Set([...product.allergenSlugs, ...product.mayContainSlugs]);
+    const hasDirectMatch = Array.from(matchedAllergens).some((slug) => selectedSet.has(slug));
+    const matchedCrossReactions = Array.from(matchedAllergens).filter((slug) =>
+      crossReactionSources.has(slug)
+    );
+
+    if (hasDirectMatch || matchedCrossReactions.length === 0) {
+      continue;
+    }
+
+    hiddenProductCount += 1;
+
+    for (const related of matchedCrossReactions) {
+      crossReactionAllergenNames.add(getAllergenName(related, namesBySlug));
+      const sources = crossReactionSources.get(related);
+      if (!sources) {
+        continue;
+      }
+
+      for (const source of sources) {
+        selectedAllergenNames.add(getAllergenName(source, namesBySlug));
+      }
+    }
+  }
+
+  if (hiddenProductCount === 0) {
+    return null;
+  }
+
+  return {
+    hiddenProductCount,
+    selectedAllergenNames: Array.from(selectedAllergenNames).sort(),
+    crossReactionAllergenNames: Array.from(crossReactionAllergenNames).sort(),
+  };
 }
 
 /**

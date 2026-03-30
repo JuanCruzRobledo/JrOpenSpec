@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy import BigInteger, ForeignKey, Integer, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from shared.models.base import BaseModel
+
+if TYPE_CHECKING:
+    from shared.models.catalog.badge import Badge
 
 
 class ProductBadge(BaseModel):
@@ -27,3 +32,5 @@ class ProductBadge(BaseModel):
         nullable=False, index=True,
     )
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+
+    badge: Mapped["Badge"] = relationship("Badge")

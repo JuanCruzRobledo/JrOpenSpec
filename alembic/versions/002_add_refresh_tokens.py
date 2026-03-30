@@ -29,6 +29,12 @@ def upgrade() -> None:
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
+            "replaced_by_id",
+            sa.BigInteger,
+            sa.ForeignKey("refresh_tokens.id"),
+            nullable=True,
+        ),
+        sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
             nullable=False,
@@ -49,10 +55,12 @@ def upgrade() -> None:
     op.create_index("ix_refresh_tokens_jti", "refresh_tokens", ["jti"], unique=True)
     op.create_index("ix_refresh_tokens_user_id", "refresh_tokens", ["user_id"])
     op.create_index("ix_refresh_tokens_family_id", "refresh_tokens", ["family_id"])
+    op.create_index("ix_refresh_tokens_replaced_by_id", "refresh_tokens", ["replaced_by_id"])
 
 
 def downgrade() -> None:
     op.drop_index("ix_refresh_tokens_family_id", table_name="refresh_tokens")
+    op.drop_index("ix_refresh_tokens_replaced_by_id", table_name="refresh_tokens")
     op.drop_index("ix_refresh_tokens_user_id", table_name="refresh_tokens")
     op.drop_index("ix_refresh_tokens_jti", table_name="refresh_tokens")
     op.drop_table("refresh_tokens")

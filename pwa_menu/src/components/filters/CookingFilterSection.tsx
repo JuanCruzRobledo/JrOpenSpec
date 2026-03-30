@@ -4,7 +4,6 @@ import { useShallow } from 'zustand/react/shallow';
 import { FilterChip } from '@/components/filters/FilterChip';
 import {
   useFilterStore,
-  selectSelectedCooking,
   selectToggleCookingAction,
 } from '@/stores/filter.store';
 import type { MenuCategory } from '@/types/menu';

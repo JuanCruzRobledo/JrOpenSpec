@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy import BigInteger, ForeignKey, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from shared.models.base import BaseModel
+
+if TYPE_CHECKING:
+    from shared.models.catalog.cooking_method import CookingMethod
 
 
 class ProductCookingMethod(BaseModel):
@@ -26,3 +31,5 @@ class ProductCookingMethod(BaseModel):
         BigInteger, ForeignKey("cooking_methods.id", ondelete="CASCADE"),
         nullable=False, index=True,
     )
+
+    cooking_method: Mapped["CookingMethod"] = relationship("CookingMethod")

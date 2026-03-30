@@ -41,6 +41,11 @@
     "description": "Nenhum produto encontrado com os filtros selecionados",
     "clearFilters": "Limpar filtros"
   },
+  "crossReactionFeedback": {
+    "title_one": "{{count}} produto foi ocultado por reação cruzada",
+    "title_other": "{{count}} produtos foram ocultados por reações cruzadas",
+    "description": "O modo muito estrito está ativo: produtos com {{crossReactions}} também foram ocultados por sua reação cruzada com {{selectedAllergens}}."
+  },
   "loading": "Carregando cardápio...",
   "error": "Não foi possível carregar o cardápio",
   "stale": "Cardápio desatualizado — atualizando...",
@@ -51,5 +56,8 @@
     "history": "Histórico de pedidos",
     "myBill": "Minha conta",
     "comingSoon": "Em breve"
+  },
+  "meta": {
+    "description": "Cardápio digital de {{branchName}}."
   }
 }

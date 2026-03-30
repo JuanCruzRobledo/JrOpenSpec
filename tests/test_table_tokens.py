@@ -137,6 +137,22 @@ class TestTableTokenPayloadContent:
         payload = verify_table_token(TEST_SECRET, token)
         assert set(payload.keys()) == {"branch_id", "table_id", "session_id", "exp", "iat"}
 
+    def test_payload_does_not_include_staff_jwt_claims(self):
+        """Table tokens stay table-scoped and never impersonate staff JWTs."""
+        token = generate_table_token(
+            secret=TEST_SECRET,
+            branch_id=42,
+            table_id=7,
+            session_id=999,
+        )
+
+        payload = verify_table_token(TEST_SECRET, token)
+
+        assert "sub" not in payload
+        assert "tenant_id" not in payload
+        assert "branch_ids" not in payload
+        assert "roles" not in payload
+
     def test_iat_is_current_timestamp(self):
         """iat should be approximately the current Unix timestamp."""
         before = int(time.time())

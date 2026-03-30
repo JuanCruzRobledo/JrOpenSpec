@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
 interface UseSWUpdateResult {

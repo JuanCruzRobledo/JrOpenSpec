@@ -22,6 +22,10 @@ DEFAULT_CORS_ORIGINS = [
     "http://localhost:5178",
     "http://localhost:5179",
     "http://localhost:5180",
+    # LAN access for mobile testing
+    "http://192.168.1.34:5176",
+    "http://192.168.1.34:5177",
+    "http://192.168.1.34:5178",
 ]
 
 ALLOWED_HEADERS = [

@@ -18,19 +18,19 @@ export interface SessionJoinResponse {
   sessionId: string;
   expiresAt: string; // ISO 8601
   branch: {
-    id: number;
+    id: string;
     name: string;
     slug: string;
   };
   table: {
     identifier: string;
-    name: string;
+    displayName: string;
   };
 }
 
 /** State shape persisted in localStorage under 'buen-sabor-session' */
 export interface SessionState {
-  /** HMAC token sent as X-Session-Token header */
+  /** HMAC token sent as X-Table-Token header */
   token: string | null;
   /** UUID v4 session identifier */
   sessionId: string | null;

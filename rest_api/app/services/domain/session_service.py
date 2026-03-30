@@ -9,6 +9,8 @@ from __future__ import annotations
 import logging
 import time
 from datetime import UTC, datetime
+import re
+from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -79,10 +81,12 @@ class SessionService:
         if table.status == "inactive":
             raise ConflictError("Table is not active")
 
-        # Use the table's database ID as the session ID (phase 6 — no DB session record)
-        # Phase 9 will introduce proper TableSession records; for now the token payload
-        # carries sufficient identity information.
-        session_id = table.id
+        # Phase 6 has no persistent TableSession record yet, and the token helper
+        # still requires an integer session_id for downstream compatibility.
+        # Expose a public UUID session identifier for the approved join contract,
+        # while keeping the integer surrogate only inside the signed token payload.
+        token_session_id = table.id
+        response_session_id = str(uuid4())
 
         now_unix = int(time.time())
         expires_at = datetime.fromtimestamp(now_unix + TOKEN_TTL_SECONDS, tz=UTC)
@@ -91,7 +95,7 @@ class SessionService:
             secret=self._secret,
             branch_id=branch.id,
             table_id=table.id,
-            session_id=session_id,
+            session_id=token_session_id,
             ttl=TOKEN_TTL_SECONDS,
         )
 
@@ -104,7 +108,7 @@ class SessionService:
 
         return {
             "token": token,
-            "sessionId": session_id,
+            "sessionId": response_session_id,
             "expiresAt": expires_at,
             "branch": {
                 "id": branch.id,
@@ -113,7 +117,7 @@ class SessionService:
             },
             "table": {
                 "identifier": table.number,
-                "displayName": display_name or table.number,
+                "displayName": self._format_table_display_name(table.number),
             },
         }
 
@@ -132,6 +136,18 @@ class SessionService:
         if branch is None:
             raise NotFoundError("Branch or table not found")
         return branch
+
+    def _format_table_display_name(self, table_identifier: str) -> str:
+        normalized = table_identifier.strip()
+        if not normalized:
+            return "Mesa"
+
+        mesa_match = re.match(r"^mesa[-_\s]*(.+)$", normalized, flags=re.IGNORECASE)
+        if mesa_match:
+            suffix = mesa_match.group(1).strip()
+            return f"Mesa {suffix}" if suffix else "Mesa"
+
+        return normalized if normalized.lower().startswith("mesa ") else f"Mesa {normalized}"
 
     async def _get_table_by_branch_and_identifier(
         self, branch_id: int, table_identifier: str

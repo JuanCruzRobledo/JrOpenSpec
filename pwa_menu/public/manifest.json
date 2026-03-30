@@ -1,7 +1,7 @@
 {
-  "name": "Menú Digital",
-  "short_name": "Menú",
-  "description": "Menú digital del restaurante con filtrado de alérgenos",
+  "name": "Buen Sabor - Menu",
+  "short_name": "Menu",
+  "description": "Menú digital del restaurante Buen Sabor con filtrado de alérgenos.",
   "theme_color": "#f97316",
   "background_color": "#0a0a0a",
   "display": "standalone",
@@ -9,6 +9,7 @@
   "start_url": "/",
   "scope": "/",
   "lang": "es",
+  "categories": ["food"],
   "icons": [
     {
       "src": "/icon-192x192.png",

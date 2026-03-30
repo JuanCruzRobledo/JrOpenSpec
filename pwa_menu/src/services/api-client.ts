@@ -20,7 +20,7 @@ const apiClient: AxiosInstance = axios.create({
 });
 
 // -----------------------------------------------------------------------
-// Request interceptor — attach X-Session-Token from session store
+// Request interceptor — attach X-Table-Token from session store
 // Imported lazily to break circular dependency: store → api-client → store
 // -----------------------------------------------------------------------
 apiClient.interceptors.request.use((config) => {
@@ -33,7 +33,7 @@ apiClient.interceptors.request.use((config) => {
       const parsed = JSON.parse(raw) as { state?: { token?: string } };
       const token = parsed.state?.token;
       if (token) {
-        config.headers['X-Session-Token'] = token;
+        config.headers['X-Table-Token'] = token;
       }
     }
   } catch {

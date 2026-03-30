@@ -22,5 +22,9 @@
     "active": "Active session",
     "table": "Table {{name}}",
     "branch": "{{name}}"
+  },
+  "meta": {
+    "description": "Digital menu of {{branchName}}.",
+    "descriptionWithTable": "Digital menu of {{branchName}} for {{tableName}}."
   }
 }

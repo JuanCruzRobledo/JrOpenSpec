@@ -1,4 +1,4 @@
-import { useState, useActionState, Suspense } from 'react';
+import { useState, useActionState, Suspense, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { BranchHeader } from './BranchHeader';
@@ -20,6 +20,8 @@ import {
   type AvatarColor,
 } from '@/config/constants';
 import i18n from '@/i18n';
+import { humanizeSlug } from '@/lib/text';
+import { persistLastTableContext } from '@/lib/session-context';
 
 interface JoinFormState {
   error: string | null;
@@ -50,7 +52,7 @@ export default function LandingPage() {
 
   async function joinAction(
     _prevState: JoinFormState,
-    _formData: FormData
+    formData: FormData
   ): Promise<JoinFormState> {
     const branchSlug = params.branch;
     const tableIdentifier = params.table;
@@ -61,15 +63,17 @@ export default function LandingPage() {
       return { error: msg };
     }
 
-    // If name is empty, send the locale-aware "anonymous" string
-    const displayName = name.trim() || t('landing.anonymous');
+    // Read form values from FormData (React 19 pattern)
+    const rawName = (formData.get('displayName') as string | null) ?? '';
+    const displayName = rawName.trim() || t('landing.anonymous');
 
     try {
+      const avatarColor = (formData.get('avatarColor') as string | null) ?? selectedColor;
       const response = await joinSession({
         branchSlug,
         tableIdentifier,
         displayName,
-        avatarColor: selectedColor,
+        avatarColor,
         locale: i18n.language,
       });
 
@@ -103,6 +107,35 @@ export default function LandingPage() {
   const branchName = params.branch ?? '';
   const tableName = params.table ?? '';
 
+  useEffect(() => {
+    if (params.tenant && params.branch && params.table) {
+      persistLastTableContext({
+        tenant: params.tenant,
+        branch: params.branch,
+        table: params.table,
+      });
+    }
+
+    const appName = i18n.t('app.name', { ns: 'common' });
+    const resolvedBranchName = branchName ? humanizeSlug(branchName) : appName;
+    const resolvedTableName = tableName ? humanizeSlug(tableName) : '';
+    const title = resolvedTableName
+      ? `${resolvedBranchName} · ${resolvedTableName} | ${appName}`
+      : `${resolvedBranchName} | ${appName}`;
+
+    document.title = title;
+
+    const description = document.querySelector('meta[name="description"]');
+    if (description) {
+      description.setAttribute(
+        'content',
+        resolvedTableName
+          ? t('meta.descriptionWithTable', { branchName: resolvedBranchName, tableName: resolvedTableName })
+          : t('meta.description', { branchName: resolvedBranchName })
+      );
+    }
+  }, [branchName, params.branch, params.table, params.tenant, tableName, t]);
+
   return (
     <div className="mx-auto w-full max-w-sm px-4 py-8">
       <Suspense fallback={<Skeleton className="h-24 w-full rounded-lg" />}>
@@ -114,6 +147,10 @@ export default function LandingPage() {
           />
 
           <form action={formAction} className="flex flex-col gap-5">
+            {/* Hidden inputs expose controlled state to FormData (React 19 pattern) */}
+            <input type="hidden" name="displayName" value={name} />
+            <input type="hidden" name="avatarColor" value={selectedColor} />
+
             <NameInput value={name} onChange={setName} />
 
             <ColorPalette

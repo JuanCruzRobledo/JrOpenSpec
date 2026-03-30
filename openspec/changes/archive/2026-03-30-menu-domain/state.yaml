@@ -1,0 +1,15 @@
+change: menu-domain
+phase: 4
+status: ready-for-archive
+artifact_store: openspec
+source: sdd-otro/sprint-4-products
+migrated_at: 2026-03-23
+reconciled_at: 2026-03-30
+artifacts:
+  proposal: done
+  spec: done
+  design: done
+  tasks: done
+  apply: reconciled
+  verify: done
+  archive: pending

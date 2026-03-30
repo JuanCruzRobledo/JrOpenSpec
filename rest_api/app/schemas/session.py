@@ -12,7 +12,7 @@ class SessionJoinRequest(BaseModel):
 
     branchSlug: str = Field(..., min_length=1, max_length=100)
     tableIdentifier: str = Field(..., min_length=1, max_length=20)
-    displayName: str = Field(default="", max_length=100)
+    displayName: str = Field(default="", max_length=50)
     avatarColor: str = Field(default="#f97316", max_length=20)
     locale: str = Field(default="es", max_length=10)
 
@@ -36,7 +36,7 @@ class SessionJoinResponse(BaseModel):
     """Response body for POST /api/sessions/join."""
 
     token: str
-    sessionId: int
+    sessionId: str
     expiresAt: datetime
     branch: BranchInfo
     table: TableInfo

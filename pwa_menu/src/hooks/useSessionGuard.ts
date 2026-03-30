@@ -5,7 +5,9 @@ import {
   selectHasSession,
   selectIsExpiredAction,
   selectClearAction,
+  selectTableIdentifier,
 } from '@/stores/session.store';
+import { buildLandingPath, resolveRememberedLandingPath } from '@/lib/session-context';
 
 /**
  * Guards routes that require an active session.
@@ -21,21 +23,19 @@ export function useSessionGuard(): void {
   const hasSession = useSessionStore(selectHasSession);
   const isExpired = useSessionStore(selectIsExpiredAction);
   const clear = useSessionStore(selectClearAction);
+  const tableIdentifier = useSessionStore(selectTableIdentifier);
 
   useEffect(() => {
     if (!hasSession) return;
 
     if (isExpired()) {
-      clear();
+      const landingPath =
+        params.tenant && params.branch && tableIdentifier
+          ? buildLandingPath(params.tenant, params.branch, tableIdentifier)
+          : resolveRememberedLandingPath(params.tenant, params.branch) ?? '/';
 
-      // Reconstruct the landing URL from current route params when available
-      if (params.tenant && params.branch && params.table) {
-        navigate(`/${params.tenant}/${params.branch}/mesa/${params.table}`, {
-          replace: true,
-        });
-      } else {
-        navigate('/', { replace: true });
-      }
+      clear();
+      navigate(landingPath, { replace: true });
     }
-  }, [hasSession, isExpired, clear, navigate, params]);
+  }, [hasSession, isExpired, clear, navigate, params, tableIdentifier]);
 }

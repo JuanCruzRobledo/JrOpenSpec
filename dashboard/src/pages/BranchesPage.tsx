@@ -15,6 +15,8 @@ import { useCrud } from '@/hooks/useCrud';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useAuth } from '@/hooks/useAuth';
 import { branchService } from '@/services/branch.service';
+import { useAuthStore } from '@/stores/auth.store';
+import { useBranchStore } from '@/stores/branch.store';
 import { helpContent } from '@/utils/helpContent';
 import type { Branch, BranchCreate, BranchUpdate } from '@/types/branch';
 
@@ -24,13 +26,22 @@ export default function BranchesPage() {
   const isManager = user?.roles?.includes('MANAGER') ?? false;
   const canCreate = !isManager;
   const canDelete = !isManager;
+  const refreshAuth = useAuthStore((s) => s.refreshAuth);
+  const fetchBranches = useBranchStore((s) => s.fetchBranches);
+  const selectBranch = useBranchStore((s) => s.selectBranch);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
 
   const crud = useCrud<Branch, BranchCreate, BranchUpdate>({
     fetchFn: (params) => branchService.list(params),
-    createFn: (data) => branchService.create(data),
+    createFn: async (data) => {
+      const createdBranch = await branchService.create(data);
+      await refreshAuth();
+      await fetchBranches();
+      selectBranch(createdBranch.id);
+      return createdBranch;
+    },
     updateFn: (id, data) => branchService.update(id, data),
     deleteFn: (id) => branchService.remove(id),
     entityName: 'Sucursal',

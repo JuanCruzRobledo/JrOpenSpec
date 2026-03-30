@@ -13,12 +13,14 @@ from datetime import datetime, timezone
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from shared.config.constants import MANAGEMENT_ROLES, Roles
 from shared.exceptions import NotFoundError, ValidationError
 from shared.infrastructure.db import safe_commit
 from shared.models.catalog.category import Category
 from shared.models.catalog.product import Product
 from shared.models.catalog.subcategory import Subcategory
 from shared.models.core.branch import Branch
+from shared.models.core.user_branch_role import UserBranchRole
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +91,13 @@ class BranchService:
 
         return [_branch_to_dict(b) for b in branches], total
 
-    async def create(self, tenant_id: int, data: dict, user_id: int) -> dict:
+    async def create(
+        self,
+        tenant_id: int,
+        data: dict,
+        user_id: int,
+        creator_roles: list[str] | None = None,
+    ) -> dict:
         """Create a new branch and auto-create a 'General' category."""
         nombre = data["nombre"]
         slug = _slug_from_name(nombre)
@@ -110,8 +118,18 @@ class BranchService:
         )
 
         self._db.add(branch)
-        await safe_commit(self._db)
-        await self._db.refresh(branch)
+        await self._db.flush()
+
+        branch_roles = self._resolve_creator_branch_roles(creator_roles)
+        for role in branch_roles:
+            self._db.add(
+                UserBranchRole(
+                    user_id=user_id,
+                    branch_id=branch.id,
+                    role=role,
+                    created_by=user_id,
+                )
+            )
 
         # Auto-create "General" category for this branch
         general_cat = Category(
@@ -125,8 +143,18 @@ class BranchService:
 
         self._db.add(general_cat)
         await safe_commit(self._db)
+        await self._db.refresh(branch)
 
         return _branch_to_dict(branch)
+
+    @staticmethod
+    def _resolve_creator_branch_roles(creator_roles: list[str] | None) -> list[str]:
+        """Return the management roles that should be granted on the new branch."""
+        if not creator_roles:
+            return [str(Roles.ADMIN)]
+
+        management_roles = sorted({role for role in creator_roles if role in MANAGEMENT_ROLES})
+        return management_roles or [str(Roles.ADMIN)]
 
     async def update(self, branch_id: int, tenant_id: int, data: dict, user_id: int) -> dict:
         """Update a branch."""

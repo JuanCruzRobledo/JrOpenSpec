@@ -12,7 +12,9 @@ import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.requests import Request
 
+from rest_api.app.middleware.rate_limit import limiter
 from rest_api.app.services.cache_service import CacheService
 from rest_api.app.services.domain.public_menu_service import PublicMenuService
 from shared.infrastructure.db import get_db
@@ -34,7 +36,9 @@ def _get_service(
 
 
 @router.get("/{slug}")
+@limiter.limit("60/minute")
 async def get_menu(
+    request: Request,
     slug: str,
     dietary: str | None = Query(None, description="Comma-separated dietary profile codes"),
     allergen_free: str | None = Query(None, description="Comma-separated allergen codes to exclude"),
@@ -49,7 +53,9 @@ async def get_menu(
 
 
 @router.get("/{slug}/product/{product_id}")
+@limiter.limit("60/minute")
 async def get_product_detail(
+    request: Request,
     slug: str,
     product_id: int,
     service: PublicMenuService = Depends(_get_service),

@@ -1,0 +1,15 @@
+change: menu-domain-fixes
+phase: 4-fixes
+parent_change: menu-domain
+status: archived
+artifact_store: openspec
+created_at: 2026-03-30
+archived_at: 2026-03-30
+artifacts:
+  proposal: done
+  spec: done
+  design: done
+  tasks: done
+  apply: done
+  verify: done
+  archive: done

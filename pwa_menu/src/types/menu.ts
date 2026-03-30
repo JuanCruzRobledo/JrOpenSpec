@@ -52,6 +52,8 @@ export interface MenuProduct {
   readonly seals: Seal[];
   /** Top-level allergen slugs for quick filtering (no detail — use ProductDetail for full info) */
   readonly allergenSlugs: string[];
+  /** Top-level may-contain allergen slugs for very_strict quick filtering */
+  readonly mayContainSlugs: string[];
   /** Dietary profile slugs for quick filtering */
   readonly dietaryProfileSlugs: string[];
   /** Cooking method slugs for quick filtering */

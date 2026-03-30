@@ -11,7 +11,9 @@ import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.requests import Request
 
+from rest_api.app.middleware.rate_limit import limiter
 from rest_api.app.services.cache_service import CacheService
 from rest_api.app.services.domain.public_menu_service import PublicMenuService
 from shared.infrastructure.db import get_db
@@ -33,7 +35,9 @@ def _get_service(
 
 
 @router.get("/")
+@limiter.limit("60/minute")
 async def get_allergens(
+    request: Request,
     tenant: str = Query(..., description="Tenant slug"),
     service: PublicMenuService = Depends(_get_service),
 ) -> JSONResponse:

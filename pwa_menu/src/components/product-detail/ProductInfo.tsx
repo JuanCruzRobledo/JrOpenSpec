@@ -26,9 +26,11 @@ export function ProductInfo({ product }: ProductInfoProps) {
   return (
     <div className="flex flex-col gap-3">
       {/* Breadcrumb */}
-      <p className="text-xs text-text-tertiary">
-        {product.categoryName} / {product.subcategoryName}
-      </p>
+      {(product.categoryName || product.subcategoryName) && (
+        <p className="text-xs text-text-tertiary">
+          {[product.categoryName, product.subcategoryName].filter(Boolean).join(' / ')}
+        </p>
+      )}
 
       {/* Name */}
       <h1 className="text-xl font-bold text-surface-text leading-tight">

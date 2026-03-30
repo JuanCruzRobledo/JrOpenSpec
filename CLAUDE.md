@@ -21,6 +21,20 @@ Contexto completo: ver `openspec/knowledge/` docs.
 
 ---
 
+## Orchestrator — Agente Principal
+
+**REGLA CRÍTICA**: El agente orquestador es el punto de entrada para TODAS las tareas, sin excepción.
+
+- Todo prompt del usuario — con o sin comando `/sdd-*` — debe ser procesado primero por el orquestador
+- El orquestador DELEGA trabajo a sub-agentes especializados; NUNCA ejecuta código inline
+- Tareas pequeñas (fixes, preguntas) → orquestador delega a sub-agente general
+- Tareas sustanciales (features, bugs complejos) → orquestador propone SDD o delega por dominio
+- El orquestador es el ÚNICO que habla con el usuario; los sub-agentes devuelven resultados al orquestador
+
+**Sin excepciones**: "es un fix chico" no justifica saltear el orquestador.
+
+---
+
 ## SDD Workflow
 
 Todo el desarrollo pasa por fases SDD. **No escribir código sin spec aprobada.**

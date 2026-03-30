@@ -4,7 +4,6 @@ import { AllergenModeSelector } from '@/components/filters/AllergenModeSelector'
 import { FilterChip } from '@/components/filters/FilterChip';
 import {
   useFilterStore,
-  selectSelectedAllergens,
   selectToggleAllergenAction,
 } from '@/stores/filter.store';
 import {

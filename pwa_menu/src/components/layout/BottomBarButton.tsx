@@ -1,9 +1,11 @@
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/cn';
 
+type BottomBarLabelKey = 'bottomBar.callWaiter' | 'bottomBar.history' | 'bottomBar.myBill';
+
 interface BottomBarButtonProps {
   /** i18n key for accessible label (also shown as tooltip) */
-  labelKey: string;
+  labelKey: BottomBarLabelKey;
   /** SVG icon element to render inside the FAB */
   icon: React.ReactNode;
   onClick: () => void;

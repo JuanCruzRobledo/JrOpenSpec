@@ -41,6 +41,11 @@
     "description": "No se encontraron productos con los filtros seleccionados",
     "clearFilters": "Limpiar filtros"
   },
+  "crossReactionFeedback": {
+    "title_one": "Se ocultó {{count}} producto por reacción cruzada",
+    "title_other": "Se ocultaron {{count}} productos por reacción cruzada",
+    "description": "Modo muy estricto activo: también se ocultaron productos con {{crossReactions}} por su reacción cruzada con {{selectedAllergens}}."
+  },
   "loading": "Cargando menú...",
   "error": "No se pudo cargar el menú",
   "stale": "Menú desactualizado — actualizando...",
@@ -51,5 +56,8 @@
     "history": "Historial de pedidos",
     "myBill": "Mi cuenta",
     "comingSoon": "Próximamente disponible"
+  },
+  "meta": {
+    "description": "Menú digital de {{branchName}}."
   }
 }

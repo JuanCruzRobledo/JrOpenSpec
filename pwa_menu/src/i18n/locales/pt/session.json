@@ -22,5 +22,9 @@
     "active": "Sessão ativa",
     "table": "Mesa {{name}}",
     "branch": "{{name}}"
+  },
+  "meta": {
+    "description": "Cardápio digital de {{branchName}}.",
+    "descriptionWithTable": "Cardápio digital de {{branchName}} para {{tableName}}."
   }
 }

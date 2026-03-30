@@ -1,8 +1,12 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
-import { resolve } from 'path';
+
+const srcPath = decodeURIComponent(new URL('./src', import.meta.url).pathname).replace(
+  /^\/([A-Za-z]:\/)/,
+  '$1'
+);
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -25,18 +29,28 @@ export default defineConfig({
       registerType: 'prompt',
 
       // Include additional assets in precache
-      includeAssets: ['favicon.svg', 'icon-192x192.png', 'icon-512x512.png'],
+      includeAssets: [
+        'favicon.svg',
+        'icon-192x192.png',
+        'icon-192x192-maskable.png',
+        'icon-512x512.png',
+        'icon-512x512-maskable.png',
+      ],
 
       manifest: {
-        name: 'Menú Digital',
-        short_name: 'Menú',
-        description: 'Menú digital del restaurante con filtrado de alérgenos',
+        name: 'Buen Sabor - Menu',
+        short_name: 'Menu',
+        description: 'Menú digital del restaurante Buen Sabor con filtrado de alérgenos.',
         theme_color: '#f97316',
         background_color: '#0a0a0a',
         display: 'standalone',
         orientation: 'portrait',
+        // Fallback only — the runtime manifest link is replaced per active
+        // tenant/branch route so installed PWAs launch from the correct scope.
         start_url: '/',
         scope: '/',
+        lang: 'es',
+        categories: ['food'],
         icons: [
           {
             src: '/icon-192x192.png',
@@ -142,13 +156,14 @@ export default defineConfig({
 
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src'),
+      '@': srcPath,
     },
   },
 
   server: {
     port: 5176,
     strictPort: true,
+    host: '0.0.0.0',
   },
 
   preview: {

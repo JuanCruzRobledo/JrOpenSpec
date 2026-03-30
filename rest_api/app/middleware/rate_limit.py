@@ -1,4 +1,4 @@
-"""Rate limiting setup using slowapi with in-memory storage.
+"""Rate limiting setup and shared auth rate-limit response helpers.
 
 Implements REQ-RATE-01:
 - Public endpoints: 100/min per IP
@@ -17,6 +17,9 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
+
+LOGIN_RATE_LIMIT_DETAIL = "Too many login attempts"
+LOGIN_RATE_LIMIT_CODE = "login_rate_limited"
 
 
 def _get_user_id_or_ip(request: Request) -> str:
@@ -62,7 +65,24 @@ async def rate_limit_exceeded_handler(
     )
 
 
+def build_login_rate_limit_response(retry_after: int) -> JSONResponse:
+    """Build the stable 429 response body for auth login protection."""
+    retry_after = max(retry_after, 1)
+    return JSONResponse(
+        status_code=429,
+        content={
+            "detail": LOGIN_RATE_LIMIT_DETAIL,
+            "code": LOGIN_RATE_LIMIT_CODE,
+            "retry_after": retry_after,
+        },
+        headers={"Retry-After": str(retry_after)},
+    )
+
+
 __all__ = [
     "limiter",
     "rate_limit_exceeded_handler",
+    "build_login_rate_limit_response",
+    "LOGIN_RATE_LIMIT_CODE",
+    "LOGIN_RATE_LIMIT_DETAIL",
 ]

@@ -36,20 +36,18 @@ cp env.example .env
 # 3. Levantar infraestructura con Docker
 docker compose up -d postgres redis
 
-# 4. Instalar dependencias del backend
-cd backend
-python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-# .venv\Scripts\activate   # Windows
-pip install -e ../shared
-pip install -r requirements.txt
+# 4. Instalar dependencias del backend desde la raiz del monorepo
+py -3.13 -m venv .venv
+# Windows PowerShell: .\.venv\Scripts\Activate.ps1
+# Windows cmd/bash: .venv\Scripts\activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements-backend-test.txt
 
 # 5. Correr migraciones
-cd ..
 alembic upgrade head
 
 # 6. Seed de datos demo
-python -m rest_api.seed
+python -m rest_api.scripts.seed
 
 # 7. Levantar backend
 python -m uvicorn rest_api.main:app --reload --port 8000
@@ -63,10 +61,29 @@ cd Dashboard && npm install && npm run dev
 cd pwaMenu && npm install && npm run dev
 cd pwaWaiter && npm install && npm run dev
 
-# 10. Correr tests
-cd backend && pytest
+# 10. Correr tests backend desde la raiz
+pytest
 cd Dashboard && npm test
 ```
+
+## Slice reproducible para verify de `foundation-auth`
+
+Para ejecutar el slice enfocado de auth desde la raiz del repo en un entorno reproducible:
+
+```bash
+# Requiere el venv del paso 4 activo
+docker compose up -d postgres
+set ENVIRONMENT=test
+set DATABASE_URL=postgresql+asyncpg://buensabor:buensabor_dev_2024@localhost:5432/buensabor
+set TEST_DATABASE_URL=postgresql+asyncpg://buensabor:buensabor_dev_2024@localhost:5432/buensabor
+python -m pytest tests/test_auth.py tests/test_rbac.py tests/test_table_tokens.py
+```
+
+Notas:
+- `requirements-backend-test.txt` instala `shared` y `rest_api[test]` en modo editable con `pytest`, `pytest-asyncio`, `httpx` y `aiosqlite`.
+- `ENVIRONMENT=test` evita el seed de desarrollo durante el arranque del app factory.
+- Este slice de auth necesita PostgreSQL real: el metadata compartido incluye columnas `ARRAY`, por eso SQLite no alcanza para `tests/test_auth.py`.
+- Redis no es requisito para este slice puntual: `tests/test_auth.py` usa un `FakeRedis` controlado por fixture.
 
 ## Estructura del Proyecto
 

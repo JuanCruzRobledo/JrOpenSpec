@@ -8,6 +8,7 @@
 
 /** Presence type for an allergen in a product */
 export type AllergenPresence = 'contains' | 'may_contain' | 'free';
+export type AllergenRiskLevel = 'low' | 'medium' | 'high';
 
 export interface ProductDetail {
   readonly id: string;
@@ -37,7 +38,10 @@ export interface ProductAllergenDetail {
   readonly allergenId: string;
   readonly allergenSlug: string;
   readonly allergenName: string;
+  readonly icon?: string | null;
   readonly presence: AllergenPresence;
+  readonly riskLevel?: AllergenRiskLevel;
+  readonly notes?: string | null;
   readonly crossReactions: CrossReaction[];
 }
 
@@ -46,7 +50,7 @@ export interface CrossReaction {
   readonly allergenSlug: string;
   readonly allergenName: string;
   /** Risk level for this cross-reaction */
-  readonly riskLevel: 'low' | 'medium' | 'high';
+  readonly riskLevel: AllergenRiskLevel;
 }
 
 export interface DietaryProfileInfo {
@@ -66,5 +70,7 @@ export interface Ingredient {
   readonly id: string;
   readonly name: string;
   readonly isOptional: boolean;
+  readonly quantity?: number | null;
+  readonly unit?: string | null;
   readonly allergenSlugs: string[];
 }

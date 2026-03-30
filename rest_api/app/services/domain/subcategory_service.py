@@ -93,18 +93,22 @@ class SubcategoryService:
         )
         subcategories = result.scalars().all()
 
+        # Single aggregated query instead of one COUNT per subcategory (N+1 fix)
+        sub_ids = [s.id for s in subcategories]
+        counts_result = await self._db.execute(
+            select(Product.subcategory_id, func.count(Product.id).label("cnt"))
+            .where(
+                Product.subcategory_id.in_(sub_ids),
+                Product.deleted_at.is_(None),
+            )
+            .group_by(Product.subcategory_id)
+        )
+        prod_counts: dict[int, int] = {row.subcategory_id: row.cnt for row in counts_result}
+
         items = []
         for sub in subcategories:
-            # Count products for this subcategory
-            prod_count = (await self._db.execute(
-                select(func.count(Product.id)).where(
-                    Product.subcategory_id == sub.id,
-                    Product.deleted_at.is_(None),
-                )
-            )).scalar() or 0
-
             cat_name = sub.category.name if sub.category else ""
-            items.append(_sub_to_dict(sub, cat_name, prod_count))
+            items.append(_sub_to_dict(sub, cat_name, prod_counts.get(sub.id, 0)))
 
         return items, total
 

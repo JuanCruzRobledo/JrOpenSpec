@@ -56,3 +56,14 @@ export function truncate(str: string, maxLength: number): string {
   }
   return truncated + '...';
 }
+
+/**
+ * Converts URL slugs into a human-friendly label.
+ */
+export function humanizeSlug(str: string): string {
+  return str
+    .split('-')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}

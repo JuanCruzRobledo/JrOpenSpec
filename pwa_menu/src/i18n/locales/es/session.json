@@ -22,5 +22,9 @@
     "active": "Sesión activa",
     "table": "Mesa {{name}}",
     "branch": "{{name}}"
+  },
+  "meta": {
+    "description": "Menú digital de {{branchName}}.",
+    "descriptionWithTable": "Menú digital de {{branchName}} para {{tableName}}."
   }
 }

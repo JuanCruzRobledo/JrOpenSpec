@@ -110,9 +110,17 @@ export const useAuthStore = create<AuthState>()(
           const res = await authService.refresh();
           const expiresAt = Date.now() + DEFAULT_TOKEN_LIFETIME_MS;
 
+          let user = get().user;
+          try {
+            user = await authService.getMe(res.access_token);
+          } catch {
+            logger.warn('Failed to fetch user profile after refresh');
+          }
+
           set({
             token: res.access_token,
             expiresAt,
+            user,
             isAuthenticated: true,
           });
 

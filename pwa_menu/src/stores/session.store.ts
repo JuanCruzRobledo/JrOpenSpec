@@ -63,7 +63,7 @@ const useSessionStore = create<SessionStoreState>()(
           branchSlug: response.branch.slug,
           branchName: response.branch.name,
           tableIdentifier: response.table.identifier,
-          tableName: response.table.name,
+          tableName: response.table.displayName,
           joinedAt: new Date().toISOString(),
           lastActivity: Date.now(),
         });

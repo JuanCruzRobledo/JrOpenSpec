@@ -1,0 +1,30 @@
+change: dashboard-shell
+phase: 3
+status: archived
+archived_at: 2026-03-30
+artifact_store: openspec
+source: sdd-otro/sprint-3-dashboard
+migrated_at: 2026-03-23
+reconciled_at: 2026-03-30
+artifacts:
+  proposal: done
+  spec: done
+  design: done
+  tasks: done
+  apply: done
+  verify: done
+  verify_verdict: PASS WITH WARNINGS
+  archive: done
+apply_summary:
+  total_tasks: 32
+  completed: 30
+  pending: 2
+  pending_items:
+    - "1.1: Build verification (npm run build not run)"
+    - "1.2: Body bg/text classes application unverified"
+  extra_beyond_spec:
+    - "AllergensPage, BadgesPage, CookingMethodsPage, DietaryProfilesPage, SealsPage"
+    - "allergen/badge/cooking-method/dietary-profile/seal services, types, forms"
+    - "HelpButton, Tabs UI components"
+    - "useToast hook"
+    - "BatchPriceModal, ProductFormTabs (multi-tab product form)"

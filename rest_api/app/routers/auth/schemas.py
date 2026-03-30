@@ -34,3 +34,5 @@ class ErrorResponse(BaseModel):
     """Standard error response body."""
 
     detail: str
+    code: str | None = None
+    retry_after: int | None = None

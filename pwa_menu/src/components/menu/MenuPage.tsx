@@ -17,6 +17,7 @@ import {
 } from '@/stores/ui.store';
 import {
   useProductDetailStore,
+  selectProduct,
   selectProductIsOpen,
   selectFetchProductAction,
   selectCloseProductAction,
@@ -30,9 +31,13 @@ import { CategorySection } from '@/components/menu/CategorySection';
 import { SearchBar } from '@/components/menu/SearchBar';
 import { EmptyState } from '@/components/menu/EmptyState';
 import { MenuSkeleton } from '@/components/menu/MenuSkeleton';
+import { CrossReactionFilterFeedback } from '@/components/menu/CrossReactionFilterFeedback';
 import { FilterDrawer } from '@/components/filters/FilterDrawer';
 import { ProductDetailModal } from '@/components/product-detail/ProductDetailModal';
 import type { MenuProduct } from '@/types/menu';
+import { humanizeSlug } from '@/lib/text';
+import i18n from '@/i18n';
+import { useCrossReactionFeedback } from '@/hooks/useCrossReactionFeedback';
 
 /**
  * Main menu page container.
@@ -60,12 +65,14 @@ export default function MenuPage() {
   const closeFilterDrawer = useUiStore(selectCloseFilterDrawerAction);
   const addToast = useUiStore(selectAddToastAction);
   const productIsOpen = useProductDetailStore(selectProductIsOpen);
+  const product = useProductDetailStore(selectProduct);
   const fetchProduct = useProductDetailStore(selectFetchProductAction);
   const closeProduct = useProductDetailStore(selectCloseProductAction);
 
   const { data, isLoading, isBackgroundRefreshing, error } = useMenuData(branchSlug ?? undefined);
 
   const filteredCategories = useFilteredProducts(data?.categories);
+  const crossReactionFeedback = useCrossReactionFeedback(data?.categories);
 
   // Section refs for IntersectionObserver category scroll sync
   const sectionRefsMap = useRef(new Map<string, HTMLElement>());
@@ -113,6 +120,17 @@ export default function MenuPage() {
       addToast(t('error'), 'error');
     }
   }, [error, addToast, t]);
+
+  useEffect(() => {
+    const appName = i18n.t('app.name', { ns: 'common' });
+    const branchName = data?.branch.name ?? (params.branch ? humanizeSlug(params.branch) : appName);
+    document.title = product?.name ? `${product.name} | ${branchName}` : `${branchName} | ${appName}`;
+
+    const description = document.querySelector('meta[name="description"]');
+    if (description) {
+      description.setAttribute('content', t('meta.description', { branchName }));
+    }
+  }, [data?.branch.name, params.branch, product?.name]);
 
   const handleProductClick = useCallback(
     (product: MenuProduct) => {
@@ -172,6 +190,12 @@ export default function MenuPage() {
 
       {/* Main content area */}
       <main className="flex-1 px-4 pb-24">
+        {crossReactionFeedback && (
+          <div className="mb-4">
+            <CrossReactionFilterFeedback summary={crossReactionFeedback} />
+          </div>
+        )}
+
         {isLoading ? (
           <MenuSkeleton />
         ) : filteredCategories.length === 0 ? (

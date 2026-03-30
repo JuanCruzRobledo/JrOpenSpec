@@ -33,11 +33,20 @@ export function AllergenEntry({ allergen }: AllergenEntryProps) {
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-col gap-0.5 min-w-0">
           <span className="text-sm font-semibold leading-tight">
+            {allergen.icon ? <span aria-hidden="true" className="mr-1">{allergen.icon}</span> : null}
             {allergen.allergenName}
           </span>
           <span className="text-xs opacity-80">
             {t(`presence.${allergen.presence}`)}
           </span>
+          {allergen.riskLevel ? (
+            <span className="text-[11px] opacity-75">
+              {t(`riskLevel.${allergen.riskLevel}`)}
+            </span>
+          ) : null}
+          {allergen.notes ? (
+            <span className="text-[11px] opacity-75">{allergen.notes}</span>
+          ) : null}
         </div>
 
         {/* Presence type badge */}

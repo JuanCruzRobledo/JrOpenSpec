@@ -14,17 +14,17 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.config import settings
-from shared.config.constants import (
-    LOGIN_LOCKOUT_SECONDS,
-    LOGIN_MAX_ATTEMPTS,
-    REDIS_LOGIN_ATTEMPTS_PREFIX,
-)
 from shared.exceptions import AppError, NotFoundError
 from shared.infrastructure.db import safe_commit
 from shared.models.core.refresh_token import RefreshToken
 from shared.models.core.user import User
 from shared.models.core.user_branch_role import UserBranchRole
-from shared.security.blacklist import add_to_blacklist, is_blacklisted
+from shared.security.blacklist import add_to_blacklist
+from shared.security.brute_force import (
+    check_login_protection,
+    record_failed_attempt,
+    reset_login_protection,
+)
 from shared.security.jwt import create_access_token, create_refresh_token, decode_token
 from shared.security.passwords import verify_password
 
@@ -45,8 +45,16 @@ class RateLimitError(AppError):
 
     status_code = 429
 
-    def __init__(self, message: str = "Too many requests"):
+    def __init__(
+        self,
+        message: str = "Too many login attempts",
+        *,
+        retry_after: int | None = None,
+        code: str = "login_rate_limited",
+    ):
         super().__init__(message=message)
+        self.retry_after = retry_after
+        self.code = code
 
 
 def _hash_token(token: str) -> str:
@@ -54,42 +62,79 @@ def _hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-async def _check_brute_force(redis_client: aioredis.Redis, email: str) -> None:
-    """Check and enforce brute-force protection via Redis counter.
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
-    Raises RateLimitError if threshold exceeded.
-    """
-    key = f"{REDIS_LOGIN_ATTEMPTS_PREFIX}{email}"
+
+async def _maybe_blacklist_access_token(
+    redis_client: aioredis.Redis,
+    access_token: str | None,
+    expected_user_id: int | None = None,
+) -> None:
+    """Best-effort blacklist of the current access token during refresh/logout."""
+    if not access_token:
+        return
+
     try:
-        attempts = await redis_client.get(key)
-        if attempts is not None and int(attempts) >= LOGIN_MAX_ATTEMPTS:
-            raise RateLimitError("Too many requests")
-    except RateLimitError:
-        raise
-    except Exception:
-        # Redis error during check — log but allow (rate limit is secondary to auth)
-        logger.warning("Redis error during brute-force check for %s", email)
+        payload = decode_token(access_token)
+    except JWTError:
+        logger.info("Skipping access-token blacklist because token decode failed")
+        return
+
+    if payload.get("type") == "refresh":
+        logger.info("Skipping access-token blacklist because token type is refresh")
+        return
+
+    jti = payload.get("jti")
+    subject = payload.get("sub")
+    exp = int(payload.get("exp", 0))
+
+    if not jti or not subject:
+        return
+
+    if expected_user_id is not None and int(subject) != expected_user_id:
+        logger.warning(
+            "Skipping access-token blacklist because subject mismatch: expected=%s actual=%s",
+            expected_user_id,
+            subject,
+        )
+        return
+
+    now = int(_utcnow().timestamp())
+    remaining_ttl = max(exp - now, 1)
+    await add_to_blacklist(redis_client, jti, remaining_ttl)
 
 
-async def _increment_login_attempts(redis_client: aioredis.Redis, email: str) -> None:
-    """Increment the failed login counter for an email."""
-    key = f"{REDIS_LOGIN_ATTEMPTS_PREFIX}{email}"
-    try:
-        pipe = redis_client.pipeline()
-        pipe.incr(key)
-        pipe.expire(key, LOGIN_LOCKOUT_SECONDS)
-        await pipe.execute()
-    except Exception:
-        logger.warning("Redis error incrementing login attempts for %s", email)
+async def _revoke_token_family(db: AsyncSession, family_id: str) -> None:
+    """Revoke every active refresh token in a family."""
+    await db.execute(
+        update(RefreshToken)
+        .where(
+            RefreshToken.family_id == family_id,
+            RefreshToken.revoked_at.is_(None),
+        )
+        .values(revoked_at=_utcnow())
+    )
 
 
-async def _clear_login_attempts(redis_client: aioredis.Redis, email: str) -> None:
-    """Clear the failed login counter on successful login."""
-    key = f"{REDIS_LOGIN_ATTEMPTS_PREFIX}{email}"
-    try:
-        await redis_client.delete(key)
-    except Exception:
-        logger.warning("Redis error clearing login attempts for %s", email)
+async def _load_active_user_with_roles(
+    db: AsyncSession, user_id: int
+) -> tuple[User, list[int], list[str]]:
+    stmt = select(User).where(User.id == user_id, User.is_active.is_(True))
+    user_result = await db.execute(stmt)
+    user = user_result.scalar_one_or_none()
+    if user is None:
+        raise AuthenticationError("User not found")
+
+    roles_stmt = select(UserBranchRole).where(
+        UserBranchRole.user_id == user.id,
+        UserBranchRole.is_active.is_(True),
+    )
+    roles_result = await db.execute(roles_stmt)
+    branch_roles = roles_result.scalars().all()
+    branch_ids = list({br.branch_id for br in branch_roles})
+    roles = list({br.role for br in branch_roles})
+    return user, branch_ids, roles
 
 
 async def _load_user_with_roles(
@@ -155,7 +200,7 @@ class AuthService:
         self.db = db
         self.redis = redis_client
 
-    async def login(self, email: str, password: str) -> tuple[str, str]:
+    async def login(self, email: str, password: str, ip_address: str = "unknown") -> tuple[str, str]:
         """Authenticate user and issue tokens.
 
         Returns:
@@ -165,24 +210,28 @@ class AuthService:
             RateLimitError: If brute-force threshold exceeded.
             AuthenticationError: If credentials are invalid.
         """
-        # Check brute-force protection
-        await _check_brute_force(self.redis, email)
+        login_state = await check_login_protection(self.redis, email, ip_address)
+        if login_state.blocked:
+            raise RateLimitError(retry_after=login_state.retry_after)
 
         # Load user
         user_data = await _load_user_with_roles(self.db, email)
         if user_data is None:
-            await _increment_login_attempts(self.redis, email)
+            failed_state = await record_failed_attempt(self.redis, email, ip_address)
+            if failed_state.blocked:
+                raise RateLimitError(retry_after=failed_state.retry_after)
             raise AuthenticationError()
 
         user, branch_ids, roles = user_data
 
         # Verify password (async — runs in executor)
         if not await verify_password(password, user.hashed_password):
-            await _increment_login_attempts(self.redis, email)
+            failed_state = await record_failed_attempt(self.redis, email, ip_address)
+            if failed_state.blocked:
+                raise RateLimitError(retry_after=failed_state.retry_after)
             raise AuthenticationError()
 
-        # Clear brute-force counter on success
-        await _clear_login_attempts(self.redis, email)
+        await reset_login_protection(self.redis, email, ip_address)
 
         # Create tokens
         access_token, _access_jti = create_access_token(
@@ -204,19 +253,20 @@ class AuthService:
             user_id=user.id,
             family_id=family_id,
             token_hash=_hash_token(refresh_token),
-            expires_at=datetime.now(timezone.utc) + timedelta(days=settings.JWT_REFRESH_EXPIRE_DAYS),
+            expires_at=_utcnow() + timedelta(days=settings.JWT_REFRESH_EXPIRE_DAYS),
         )
         self.db.add(db_refresh)
-        await safe_commit(self.db)
-
-        # Update last_login_at
-        user.last_login_at = datetime.now(timezone.utc)
+        user.last_login_at = _utcnow()
         await safe_commit(self.db)
 
         logger.info("User %s logged in successfully", user.id)
         return access_token, refresh_token
 
-    async def refresh(self, refresh_token_str: str) -> tuple[str, str]:
+    async def refresh(
+        self,
+        refresh_token_str: str,
+        current_access_token: str | None = None,
+    ) -> tuple[str, str]:
         """Rotate refresh token and issue new access token.
 
         Implements reuse detection: if the incoming refresh token is already
@@ -248,51 +298,40 @@ class AuthService:
         stmt = select(RefreshToken).where(
             RefreshToken.jti == jti,
             RefreshToken.user_id == user_id,
-        )
+        ).with_for_update()
         result = await self.db.execute(stmt)
         db_token = result.scalar_one_or_none()
 
-        # REUSE DETECTION: token not found or already revoked
-        if db_token is None or db_token.revoked_at is not None:
+        # REUSE DETECTION: token not found, replaced, revoked, or hash mismatch
+        if db_token is None:
             logger.warning(
                 "Refresh token reuse detected for family=%s user=%s — revoking entire family",
                 family_id,
                 user_id,
             )
-            # Revoke ALL tokens in this family
-            await self.db.execute(
-                update(RefreshToken)
-                .where(
-                    RefreshToken.family_id == family_id,
-                    RefreshToken.revoked_at.is_(None),
-                )
-                .values(revoked_at=datetime.now(timezone.utc))
-            )
+            await _revoke_token_family(self.db, family_id)
             await safe_commit(self.db)
-            raise AuthenticationError("Token reuse detected")
+            raise AuthenticationError("Refresh token reuse detected")
+
+        incoming_hash = _hash_token(refresh_token_str)
+        if db_token.token_hash != incoming_hash or db_token.revoked_at is not None or db_token.replaced_by_id is not None:
+            logger.warning(
+                "Refresh token reuse detected for family=%s user=%s token_id=%s",
+                family_id,
+                user_id,
+                db_token.id,
+            )
+            await _revoke_token_family(self.db, family_id)
+            await safe_commit(self.db)
+            raise AuthenticationError("Refresh token reuse detected")
 
         # Check expiry
-        if db_token.expires_at < datetime.now(timezone.utc):
+        if db_token.expires_at < _utcnow():
+            db_token.revoked_at = _utcnow()
+            await safe_commit(self.db)
             raise AuthenticationError("Refresh token expired")
 
-        # Revoke current token
-        db_token.revoked_at = datetime.now(timezone.utc)
-
-        # Load user data for new access token
-        stmt = select(User).where(User.id == user_id, User.is_active.is_(True))
-        user_result = await self.db.execute(stmt)
-        user = user_result.scalar_one_or_none()
-        if user is None:
-            raise AuthenticationError("User not found")
-
-        roles_stmt = select(UserBranchRole).where(
-            UserBranchRole.user_id == user.id,
-            UserBranchRole.is_active.is_(True),
-        )
-        roles_result = await self.db.execute(roles_stmt)
-        branch_roles = roles_result.scalars().all()
-        branch_ids = list({br.branch_id for br in branch_roles})
-        roles = list({br.role for br in branch_roles})
+        user, branch_ids, roles = await _load_active_user_with_roles(self.db, user_id)
 
         # Issue new tokens (same family)
         new_access_token, _access_jti = create_access_token(
@@ -313,15 +352,25 @@ class AuthService:
             user_id=user.id,
             family_id=family_id,
             token_hash=_hash_token(new_refresh_token),
-            expires_at=datetime.now(timezone.utc) + timedelta(days=settings.JWT_REFRESH_EXPIRE_DAYS),
+            expires_at=_utcnow() + timedelta(days=settings.JWT_REFRESH_EXPIRE_DAYS),
         )
         self.db.add(new_db_refresh)
+        await self.db.flush()
+
+        db_token.revoked_at = _utcnow()
+        db_token.replaced_by_id = new_db_refresh.id
         await safe_commit(self.db)
+
+        await _maybe_blacklist_access_token(
+            self.redis,
+            current_access_token,
+            expected_user_id=user.id,
+        )
 
         logger.info("Refreshed tokens for user %s (family=%s)", user.id, family_id)
         return new_access_token, new_refresh_token
 
-    async def logout(self, access_token: str) -> None:
+    async def logout(self, access_token: str, refresh_token_str: str | None = None) -> None:
         """Blacklist the access token and revoke the associated refresh token.
 
         Args:
@@ -340,20 +389,36 @@ class AuthService:
         exp = payload.get("exp", 0)
 
         # Blacklist access token in Redis (TTL = remaining lifetime)
-        now = int(datetime.now(timezone.utc).timestamp())
+        now = int(_utcnow().timestamp())
         remaining_ttl = max(exp - now, 1)
         await add_to_blacklist(self.redis, jti, remaining_ttl)
 
-        # Revoke all active refresh tokens for this user
-        # (conservative approach — user must re-login)
-        await self.db.execute(
-            update(RefreshToken)
-            .where(
-                RefreshToken.user_id == user_id,
-                RefreshToken.revoked_at.is_(None),
+        if refresh_token_str:
+            try:
+                refresh_payload = decode_token(refresh_token_str)
+            except JWTError:
+                refresh_payload = None
+
+            if refresh_payload and refresh_payload.get("family_id"):
+                await _revoke_token_family(self.db, refresh_payload["family_id"])
+            else:
+                await self.db.execute(
+                    update(RefreshToken)
+                    .where(
+                        RefreshToken.user_id == user_id,
+                        RefreshToken.revoked_at.is_(None),
+                    )
+                    .values(revoked_at=_utcnow())
+                )
+        else:
+            await self.db.execute(
+                update(RefreshToken)
+                .where(
+                    RefreshToken.user_id == user_id,
+                    RefreshToken.revoked_at.is_(None),
+                )
+                .values(revoked_at=_utcnow())
             )
-            .values(revoked_at=datetime.now(timezone.utc))
-        )
         await safe_commit(self.db)
 
         logger.info("User %s logged out, access token blacklisted", user_id)

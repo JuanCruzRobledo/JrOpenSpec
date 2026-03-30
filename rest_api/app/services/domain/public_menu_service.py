@@ -21,10 +21,16 @@ from shared.models.catalog.category import Category
 from shared.models.catalog.dietary_profile import DietaryProfile
 from shared.models.catalog.product import Product
 from shared.models.catalog.product_allergen import ProductAllergen
+from shared.models.catalog.product_badge import ProductBadge
+from shared.models.catalog.product_cooking_method import ProductCookingMethod
 from shared.models.catalog.product_dietary_profile import ProductDietaryProfile
+from shared.models.catalog.product_seal import ProductSeal
 from shared.models.catalog.subcategory import Subcategory
 from shared.models.core.branch import Branch
 from shared.models.core.tenant import Tenant
+from shared.models.marketing.badge import Badge
+from shared.models.marketing.seal import Seal
+from shared.models.profiles.cooking_method import CookingMethod
 from rest_api.app.services.cache_service import CacheService
 
 logger = logging.getLogger(__name__)
@@ -81,10 +87,10 @@ class PublicMenuService:
             .options(
                 joinedload(Product.subcategory).joinedload(Subcategory.category),
                 selectinload(Product.product_allergens).joinedload(ProductAllergen.allergen),
-                selectinload(Product.product_dietary_profiles),
-                selectinload(Product.product_cooking_methods),
-                selectinload(Product.product_badges),
-                selectinload(Product.product_seals),
+                selectinload(Product.product_dietary_profiles).joinedload(ProductDietaryProfile.dietary_profile),
+                selectinload(Product.product_cooking_methods).joinedload(ProductCookingMethod.cooking_method),
+                selectinload(Product.product_badges).joinedload(ProductBadge.badge),
+                selectinload(Product.product_seals).joinedload(ProductSeal.seal),
                 selectinload(Product.branch_products),
             )
         )
@@ -116,22 +122,35 @@ class PublicMenuService:
         result = await self._db.execute(stmt)
         products = result.scalars().unique().all()
 
-        # Group by category
+        # Group by category → subcategory (3-level hierarchy expected by frontend)
+        # categories_map[cat_id]["subcategories"][sub_id]["products"]
         categories_map: dict[int, dict] = {}
         allergen_codes_used: set[str] = set()
 
         for product in products:
-            cat = product.subcategory.category if product.subcategory else None
-            if cat is None:
+            sub = product.subcategory
+            cat = sub.category if sub else None
+            if cat is None or sub is None:
                 continue
 
+            # Ensure category entry exists
             if cat.id not in categories_map:
                 categories_map[cat.id] = {
-                    "id": cat.id,
+                    "id": str(cat.id),
                     "name": cat.name,
                     "slug": cat.slug,
-                    "description": cat.description,
-                    "sortOrder": cat.display_order,
+                    "displayOrder": cat.display_order,
+                    "subcategories": {},
+                }
+
+            # Ensure subcategory entry exists within this category
+            subs_map = categories_map[cat.id]["subcategories"]
+            if sub.id not in subs_map:
+                subs_map[sub.id] = {
+                    "id": str(sub.id),
+                    "name": sub.name,
+                    "slug": sub.slug,
+                    "displayOrder": sub.display_order,
                     "products": [],
                 }
 
@@ -142,86 +161,79 @@ class PublicMenuService:
             )
             price_cents = bp.effective_price_cents if bp else product.base_price_cents
 
-            # Allergen summary
-            allergen_summary = {"contains": [], "mayContain": [], "freeOf": []}
+            # Quick-filter allergen fields used by pwa_menu filter-engine.
+            allergen_slugs: list[str] = []
+            may_contain_slugs: list[str] = []
             for pa in product.product_allergens:
-                code = pa.allergen.code
-                allergen_codes_used.add(code)
+                allergen_codes_used.add(pa.allergen.code)
                 if pa.presence_type == "contains":
-                    allergen_summary["contains"].append(code)
+                    allergen_slugs.append(pa.allergen.code)
                 elif pa.presence_type == "may_contain":
-                    allergen_summary["mayContain"].append(code)
-                elif pa.presence_type == "free_of":
-                    allergen_summary["freeOf"].append(code)
+                    may_contain_slugs.append(pa.allergen.code)
 
-            # Dietary profile codes
-            dietary_codes = []
+            # Dietary profile slugs
+            dietary_codes: list[str] = []
             for pdp in product.product_dietary_profiles:
-                # Load the actual profile to get the code
-                dp_result = await self._db.execute(
-                    select(DietaryProfile).where(DietaryProfile.id == pdp.dietary_profile_id)
-                )
-                dp = dp_result.scalar_one_or_none()
-                if dp:
-                    dietary_codes.append(dp.code)
+                if pdp.dietary_profile:
+                    dietary_codes.append(pdp.dietary_profile.code)
 
-            # Cooking method codes
-            cooking_codes = []
+            # Cooking method slugs
+            cooking_codes: list[str] = []
             for pcm in product.product_cooking_methods:
-                from shared.models.profiles.cooking_method import CookingMethod
-                cm_result = await self._db.execute(
-                    select(CookingMethod).where(CookingMethod.id == pcm.cooking_method_id)
-                )
-                cm = cm_result.scalar_one_or_none()
-                if cm:
-                    cooking_codes.append(cm.code)
+                if pcm.cooking_method:
+                    cooking_codes.append(pcm.cooking_method.code)
 
-            # Badges
+            # Badges — map to frontend Badge type
             badges = []
             for pb in product.product_badges:
-                from shared.models.marketing.badge import Badge
-                b_result = await self._db.execute(
-                    select(Badge).where(Badge.id == pb.badge_id)
-                )
-                b = b_result.scalar_one_or_none()
+                b = pb.badge
                 if b:
                     badges.append({
-                        "code": b.code, "name": b.name,
-                        "color": b.color, "icon": b.icon,
+                        "id": str(b.id),
+                        "name": b.name,
+                        "slug": b.code,
+                        "colorHex": b.color,
+                        "iconName": b.icon,
                     })
 
-            # Seals
+            # Seals — map to frontend Seal type
             seals = []
             for ps in product.product_seals:
-                from shared.models.marketing.seal import Seal
-                s_result = await self._db.execute(
-                    select(Seal).where(Seal.id == ps.seal_id)
-                )
-                s = s_result.scalar_one_or_none()
+                s = ps.seal
                 if s:
                     seals.append({
-                        "code": s.code, "name": s.name,
-                        "color": s.color, "icon": s.icon,
+                        "id": str(s.id),
+                        "name": s.name,
+                        "slug": s.code,
+                        "imageUrl": None,
+                        "description": None,
                     })
 
             prod_dict = {
-                "id": product.id,
+                "id": str(product.id),
                 "name": product.name,
-                "shortDescription": product.short_description,
+                "slug": product.slug,
+                "description": product.short_description,
                 "priceCents": price_cents,
                 "imageUrl": product.image_url,
+                "isAvailable": True,
                 "badges": badges,
                 "seals": seals,
-                "dietaryProfiles": dietary_codes,
-                "allergenSummary": allergen_summary,
-                "cookingMethods": cooking_codes,
-                "flavorProfiles": product.flavor_profiles_array or [],
-                "isAvailable": True,
+                "allergenSlugs": allergen_slugs,
+                "mayContainSlugs": may_contain_slugs,
+                "dietaryProfileSlugs": dietary_codes,
+                "cookingMethodSlugs": cooking_codes,
             }
-            categories_map[cat.id]["products"].append(prod_dict)
+            subs_map[sub.id]["products"].append(prod_dict)
 
-        # Sort categories by sortOrder
-        categories = sorted(categories_map.values(), key=lambda c: c["sortOrder"])
+        # Serialize: convert nested dicts to sorted lists
+        categories = []
+        for cat_entry in sorted(categories_map.values(), key=lambda c: c["displayOrder"]):
+            subcategories = sorted(
+                cat_entry["subcategories"].values(),
+                key=lambda s: s["displayOrder"],
+            )
+            categories.append({**cat_entry, "subcategories": subcategories})
 
         # Allergen legend
         allergen_legend = []
@@ -241,15 +253,15 @@ class PublicMenuService:
 
         return {
             "branch": {
-                "id": branch.id,
+                "id": str(branch.id),
                 "name": branch.name,
                 "slug": branch.slug,
+                "tenantSlug": branch.slug.split("-")[0] if branch.slug else "",
+                "logoUrl": None,
                 "address": branch.address,
                 "phone": branch.phone,
-                "openNow": branch.is_open,
             },
             "categories": categories,
-            "allergenLegend": allergen_legend,
             "generatedAt": datetime.now(UTC).isoformat(),
         }
 
@@ -279,12 +291,19 @@ class PublicMenuService:
             )
             .options(
                 joinedload(Product.subcategory).joinedload(Subcategory.category),
-                selectinload(Product.product_allergens).joinedload(ProductAllergen.allergen),
-                selectinload(Product.product_dietary_profiles),
-                selectinload(Product.product_cooking_methods),
+                selectinload(Product.product_allergens)
+                    .joinedload(ProductAllergen.allergen)
+                    .selectinload(Allergen.cross_reactions_as_source)
+                    .joinedload(AllergenCrossReaction.related_allergen),
+                selectinload(Product.product_allergens)
+                    .joinedload(ProductAllergen.allergen)
+                    .selectinload(Allergen.cross_reactions_as_related)
+                    .joinedload(AllergenCrossReaction.allergen),
+                selectinload(Product.product_dietary_profiles).joinedload(ProductDietaryProfile.dietary_profile),
+                selectinload(Product.product_cooking_methods).joinedload(ProductCookingMethod.cooking_method),
                 selectinload(Product.ingredients),
-                selectinload(Product.product_badges),
-                selectinload(Product.product_seals),
+                selectinload(Product.product_badges).joinedload(ProductBadge.badge),
+                selectinload(Product.product_seals).joinedload(ProductSeal.seal),
                 selectinload(Product.branch_products),
             )
         )
@@ -303,35 +322,23 @@ class PublicMenuService:
         allergens = []
         for pa in product.product_allergens:
             a = pa.allergen
-            # Load cross-reactions for this allergen
-            cr_result = await self._db.execute(
-                select(AllergenCrossReaction)
-                .where(
-                    or_(
-                        AllergenCrossReaction.allergen_id == a.id,
-                        AllergenCrossReaction.related_allergen_id == a.id,
-                    )
-                )
-                .options(
-                    selectinload(AllergenCrossReaction.allergen),
-                    selectinload(AllergenCrossReaction.related_allergen),
-                )
-            )
+            # Cross-reactions already loaded via eager load chains on the query
             cross_reactions = []
-            for cr in cr_result.scalars().all():
+            for cr in a.all_cross_reactions:
                 related = cr.related_allergen if cr.allergen_id == a.id else cr.allergen
                 cross_reactions.append({
-                    "code": related.code,
-                    "name": related.name,
-                    "description": cr.description,
-                    "severity": cr.severity,
+                    "allergenId": str(related.id),
+                    "allergenSlug": related.code,
+                    "allergenName": related.name,
+                    "riskLevel": cr.severity,
                 })
 
             allergens.append({
-                "code": a.code,
-                "name": a.name,
+                "allergenId": str(a.id),
+                "allergenSlug": a.code,
+                "allergenName": a.name,
                 "icon": a.icon,
-                "presenceType": pa.presence_type,
+                "presence": pa.presence_type,
                 "riskLevel": pa.risk_level,
                 "notes": pa.notes,
                 "crossReactions": cross_reactions,
@@ -340,21 +347,14 @@ class PublicMenuService:
         # Dietary profiles
         dietary_profiles = []
         for pdp in product.product_dietary_profiles:
-            dp_result = await self._db.execute(
-                select(DietaryProfile).where(DietaryProfile.id == pdp.dietary_profile_id)
-            )
-            dp = dp_result.scalar_one_or_none()
+            dp = pdp.dietary_profile
             if dp:
                 dietary_profiles.append({"code": dp.code, "name": dp.name, "icon": dp.icon})
 
         # Cooking methods
         cooking_methods = []
         for pcm in product.product_cooking_methods:
-            from shared.models.profiles.cooking_method import CookingMethod
-            cm_result = await self._db.execute(
-                select(CookingMethod).where(CookingMethod.id == pcm.cooking_method_id)
-            )
-            cm = cm_result.scalar_one_or_none()
+            cm = pcm.cooking_method
             if cm:
                 cooking_methods.append({"code": cm.code, "name": cm.name, "icon": cm.icon})
 
@@ -372,18 +372,14 @@ class PublicMenuService:
         # Badges
         badges = []
         for pb in product.product_badges:
-            from shared.models.marketing.badge import Badge
-            b_result = await self._db.execute(select(Badge).where(Badge.id == pb.badge_id))
-            b = b_result.scalar_one_or_none()
+            b = pb.badge
             if b:
                 badges.append({"code": b.code, "name": b.name, "color": b.color, "icon": b.icon})
 
         # Seals
         seals = []
         for ps in product.product_seals:
-            from shared.models.marketing.seal import Seal
-            s_result = await self._db.execute(select(Seal).where(Seal.id == ps.seal_id))
-            s = s_result.scalar_one_or_none()
+            s = ps.seal
             if s:
                 seals.append({"code": s.code, "name": s.name, "color": s.color, "icon": s.icon})
 
@@ -395,7 +391,7 @@ class PublicMenuService:
             "description": product.description,
             "shortDescription": product.short_description,
             "priceCents": price_cents,
-            "imageUrl": product.image_url,
+            "imageUrls": [product.image_url] if product.image_url else [],
             "badges": badges,
             "seals": seals,
             "dietaryProfiles": dietary_profiles,
@@ -502,43 +498,36 @@ class PublicMenuService:
             select(Allergen).where(
                 or_(Allergen.tenant_id.is_(None), Allergen.tenant_id == tenant.id),
                 Allergen.deleted_at.is_(None),
-            ).order_by(Allergen.is_system.desc(), Allergen.name)
+            )
+            .options(
+                selectinload(Allergen.cross_reactions_as_source).joinedload(AllergenCrossReaction.related_allergen),
+                selectinload(Allergen.cross_reactions_as_related).joinedload(AllergenCrossReaction.allergen),
+            )
+            .order_by(Allergen.is_system.desc(), Allergen.name)
         )
         allergens = result.scalars().all()
 
         items = []
         for a in allergens:
-            # Load cross-reactions
-            cr_result = await self._db.execute(
-                select(AllergenCrossReaction)
-                .where(
-                    or_(
-                        AllergenCrossReaction.allergen_id == a.id,
-                        AllergenCrossReaction.related_allergen_id == a.id,
-                    )
-                )
-                .options(
-                    selectinload(AllergenCrossReaction.allergen),
-                    selectinload(AllergenCrossReaction.related_allergen),
-                )
-            )
+            # Cross-reactions already loaded via eager load chains on the query
             cross_reactions = []
-            for cr in cr_result.scalars().all():
+            for cr in a.all_cross_reactions:
                 related = cr.related_allergen if cr.allergen_id == a.id else cr.allergen
                 cross_reactions.append({
-                    "relatedCode": related.code,
-                    "relatedName": related.name,
-                    "description": cr.description,
-                    "severity": cr.severity,
+                    "allergenId": str(related.id),
+                    "allergenSlug": related.code,
+                    "allergenName": related.name,
+                    "riskLevel": cr.severity,
                 })
 
             items.append({
-                "code": a.code,
+                "id": str(a.id),
+                "slug": a.code,
                 "name": a.name,
                 "description": a.description,
                 "icon": a.icon,
                 "isSystem": a.is_system,
-                "crossReactions": cross_reactions,
+                "crossReacts": cross_reactions,
             })
 
         return {

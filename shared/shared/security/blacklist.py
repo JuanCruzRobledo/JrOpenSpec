@@ -1,8 +1,11 @@
-"""Redis-based JWT blacklist with fail-closed pattern.
+"""Redis-based JWT blacklist with fail-closed validation semantics.
 
 If Redis is unreachable, ALL tokens are treated as blacklisted (rejected).
 This is a security decision: we prefer denying service over accepting
 potentially-revoked tokens.
+
+Write failures still raise so callers can decide whether revocation should
+abort the current operation or degrade gracefully.
 """
 
 import logging

@@ -73,6 +73,7 @@ async def create_branch(
         tenant_id=ctx.tenant_id,
         data=body.model_dump(exclude_unset=True),
         user_id=int(ctx.user_id),
+        creator_roles=list(ctx.roles),
     )
     return {"data": data}
 

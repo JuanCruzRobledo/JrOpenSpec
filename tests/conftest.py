@@ -2,10 +2,11 @@
 
 Provides:
 - Async test client (httpx.AsyncClient) with the FastAPI app
-- Database session with transaction rollback (no persistent state)
+- Database session with schema reset per test (no persistent state)
 - Redis mock/fixture
 - Authenticated client factory with role-based tokens
 - Test user creation helpers
+- Menu-domain fixtures: seed_tenant, seed_branch, seed_allergens, seed_product
 """
 
 from collections.abc import AsyncGenerator
@@ -14,12 +15,19 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from shared.config import settings
 from shared.infrastructure.db import get_db
 from shared.infrastructure.redis import get_redis
 from shared.models.base import Base
+from shared.models.catalog.allergen import Allergen
+from shared.models.catalog.branch_product import BranchProduct
+from shared.models.catalog.category import Category
+from shared.models.catalog.product import Product
+from shared.models.catalog.subcategory import Subcategory
+from shared.models.core.branch import Branch
+from shared.models.core.tenant import Tenant
 
 from rest_api.app.main import create_app
 
@@ -31,34 +39,30 @@ from rest_api.app.main import create_app
 # Use the same DB URL for tests — override with TEST_DATABASE_URL if needed
 _TEST_DB_URL = getattr(settings, "TEST_DATABASE_URL", None) or settings.DATABASE_URL
 
-# Track whether tables have been created this session
-_tables_created = False
-
-
 @pytest_asyncio.fixture
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Provide a transactional database session that rolls back after each test.
+    """Provide an isolated database session with schema reset per test.
 
-    Creates tables on first use (lazy init). Each test gets its own engine
-    and connection to avoid event loop mismatch issues with session-scoped fixtures.
+    Recreates the schema for every test so helpers that call `safe_commit()` do not
+    leak state into later tests. Each test still gets its own engine/session to avoid
+    event loop mismatch issues with longer-lived fixtures.
     """
-    global _tables_created
     engine = create_async_engine(_TEST_DB_URL, echo=False)
 
-    if not _tables_created:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        _tables_created = True
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
 
-    async with engine.connect() as connection:
-        transaction = await connection.begin()
-        session = AsyncSession(bind=connection, expire_on_commit=False)
+    session_factory = async_sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)
 
+    async with session_factory() as session:
         try:
             yield session
         finally:
             await session.close()
-            await transaction.rollback()
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
 
     await engine.dispose()
 
@@ -100,8 +104,17 @@ def _make_pipeline_mock():
 
 @pytest_asyncio.fixture
 async def app(db_session: AsyncSession, mock_redis: AsyncMock):
-    """Create a test application with overridden dependencies."""
+    """Create a test application with overridden dependencies.
+
+    Rate limiting is disabled by default to prevent cross-test interference.
+    Use the ``enable_rate_limit`` fixture in tests that need 429 behavior.
+    """
+    from rest_api.app.middleware.rate_limit import limiter
+
     application = create_app()
+
+    # Disable rate limiting globally for all tests by default
+    limiter.enabled = False
 
     # Override database dependency
     async def _override_get_db():
@@ -117,6 +130,7 @@ async def app(db_session: AsyncSession, mock_redis: AsyncMock):
     yield application
 
     application.dependency_overrides.clear()
+    limiter.enabled = False  # ensure limiter is disabled after each test
 
 
 @pytest_asyncio.fixture
@@ -211,3 +225,123 @@ async def authenticated_client(client: AsyncClient) -> AsyncClient:
     headers = auth_headers("ADMIN")
     client.headers.update(headers)
     return client
+
+
+# ---------------------------------------------------------------------------
+# Rate limit control
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def enable_rate_limit():
+    """Re-enable the rate limiter for tests that verify 429 behavior.
+
+    Usage: include this fixture in any test that asserts HTTP 429 responses.
+    The limiter is restored to disabled after the test completes.
+    """
+    from rest_api.app.middleware.rate_limit import limiter
+
+    limiter.enabled = True
+    yield
+    limiter.enabled = False
+
+
+# ---------------------------------------------------------------------------
+# Menu-domain seed fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest_asyncio.fixture
+async def seed_tenant(db_session: AsyncSession) -> Tenant:
+    """Create and commit a test Tenant."""
+    tenant = Tenant(
+        name="Test Restaurant",
+        slug="test-restaurant",
+    )
+    db_session.add(tenant)
+    await db_session.commit()
+    return tenant
+
+
+@pytest_asyncio.fixture
+async def seed_branch(db_session: AsyncSession, seed_tenant: Tenant) -> Branch:
+    """Create and commit a test Branch linked to seed_tenant."""
+    branch = Branch(
+        tenant_id=seed_tenant.id,
+        name="Test Branch",
+        slug="test-branch",
+    )
+    db_session.add(branch)
+    await db_session.commit()
+    return branch
+
+
+@pytest_asyncio.fixture
+async def seed_allergens(db_session: AsyncSession) -> list[Allergen]:
+    """Create and commit 4 system allergens (gluten, dairy, peanuts, tree_nuts).
+
+    These mirror the EU-14 system rows produced by migration 005.
+    ``tenant_id=None`` and ``is_system=True`` match the system seed contract.
+    """
+    allergens = [
+        Allergen(code="gluten", name="Gluten", is_system=True, tenant_id=None),
+        Allergen(code="dairy", name="Lácteos", is_system=True, tenant_id=None),
+        Allergen(code="peanuts", name="Maní", is_system=True, tenant_id=None),
+        Allergen(code="tree_nuts", name="Frutos de cáscara", is_system=True, tenant_id=None),
+    ]
+    db_session.add_all(allergens)
+    await db_session.commit()
+    return allergens
+
+
+@pytest_asyncio.fixture
+async def seed_product(
+    db_session: AsyncSession,
+    seed_tenant: Tenant,
+    seed_branch: Branch,
+) -> Product:
+    """Create and commit a Product with a BranchProduct entry for seed_branch.
+
+    Creates the required Category → Subcategory → Product chain.
+    The BranchProduct has ``is_available=True`` and ``base_price_cents=1000``.
+    Returns the ``Product`` ORM object.
+    """
+    # Category is required by Subcategory FK
+    category = Category(
+        tenant_id=seed_tenant.id,
+        name="Test Category",
+        slug="test-category",
+    )
+    db_session.add(category)
+    await db_session.flush()
+
+    subcategory = Subcategory(
+        category_id=category.id,
+        name="Test Subcategory",
+        slug="test-subcategory",
+    )
+    db_session.add(subcategory)
+    await db_session.flush()
+
+    product = Product(
+        tenant_id=seed_tenant.id,
+        subcategory_id=subcategory.id,
+        name="Test Product",
+        slug="test-product",
+        base_price_cents=1000,
+        is_available=True,
+        is_visible_in_menu=True,
+    )
+    db_session.add(product)
+    await db_session.flush()
+
+    branch_product = BranchProduct(
+        branch_id=seed_branch.id,
+        product_id=product.id,
+        is_available=True,
+        price_cents=None,  # use base_price_cents by default; override per test
+    )
+    db_session.add(branch_product)
+    await db_session.commit()
+
+    return product

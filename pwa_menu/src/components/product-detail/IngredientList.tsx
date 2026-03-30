@@ -12,6 +12,16 @@ interface IngredientListProps {
 export function IngredientList({ ingredients }: IngredientListProps) {
   const { t } = useTranslation('menu');
 
+  const formatQuantity = (quantity?: number | null, unit?: string | null) => {
+    if (quantity === null || quantity === undefined) return null;
+
+    const formattedQuantity = Number.isInteger(quantity)
+      ? String(quantity)
+      : quantity.toString();
+
+    return `${formattedQuantity}${unit ?? ''}`;
+  };
+
   if (ingredients.length === 0) {
     return (
       <p className="text-sm italic text-text-tertiary">{t('detail.noIngredients')}</p>
@@ -34,8 +44,13 @@ export function IngredientList({ ingredients }: IngredientListProps) {
             )}
           </span>
 
-          {/* Allergen hint dots — subtle */}
-          {ingredient.allergenSlugs.length > 0 && (
+          {formatQuantity(ingredient.quantity, ingredient.unit) && (
+            <span className="flex-shrink-0 text-xs text-text-tertiary">
+              {formatQuantity(ingredient.quantity, ingredient.unit)}
+            </span>
+          )}
+
+          {!formatQuantity(ingredient.quantity, ingredient.unit) && ingredient.allergenSlugs.length > 0 && (
             <span
               className="flex-shrink-0 text-[10px] text-text-tertiary"
               aria-hidden="true"

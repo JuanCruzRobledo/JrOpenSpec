@@ -64,6 +64,7 @@ class ManagerStrategy(BaseStrategy):
     _full_access: frozenset[str] = frozenset({
         "Order", "Round", "Table", "Sector", "ServiceCall",
         "Check", "Category", "Promotion", "Recipe", "Ingredient",
+        "Staff",
     })
 
     # Resources managers can read but not create/delete
@@ -73,7 +74,7 @@ class ManagerStrategy(BaseStrategy):
 
     # Resources managers can manage (assign, unassign)
     _manageable: frozenset[str] = frozenset({
-        "StaffAssignment", "WaiterSector",
+        "StaffAssignment", "WaiterSector", "WaiterSectorAssignment",
     })
 
     def can(self, action: Action, resource: str, **context: object) -> bool:
@@ -112,8 +113,8 @@ class WaiterStrategy(BaseStrategy):
     priority = 10
 
     _read_resources: frozenset[str] = frozenset({
-        "Product", "Category", "Table", "Sector", "Promotion",
-        "Allergen", "DietaryProfile",
+        "Product", "Category", "Sector", "Promotion",
+        "Allergen", "DietaryProfile", "WaiterSectorAssignment",
     })
 
     _manage_resources: frozenset[str] = frozenset({
@@ -130,10 +131,29 @@ class WaiterStrategy(BaseStrategy):
         return False
 
 
+class ReadOnlyStrategy(BaseStrategy):
+    """READONLY — can view most resources but cannot create/edit/delete."""
+
+    priority = 5
+
+    _read_resources: frozenset[str] = frozenset({
+        "Product", "Category", "Table", "Sector", "Promotion",
+        "Allergen", "DietaryProfile", "Staff", "User",
+        "Order", "Round", "KitchenTicket", "WaiterSectorAssignment",
+        "AuditLog", "Branch",
+    })
+
+    def can(self, action: Action, resource: str, **context: object) -> bool:
+        if resource in self._read_resources:
+            return action == Action.READ
+        return False
+
+
 # Registry: role name → strategy instance (singletons)
 STRATEGY_REGISTRY: dict[str, BaseStrategy] = {
     "ADMIN": AdminStrategy(),
     "MANAGER": ManagerStrategy(),
     "KITCHEN": KitchenStrategy(),
     "WAITER": WaiterStrategy(),
+    "READONLY": ReadOnlyStrategy(),
 }

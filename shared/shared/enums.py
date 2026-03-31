@@ -65,3 +65,63 @@ class BatchPriceOperation(str, Enum):
     FIXED_SUBTRACT = "fixed_subtract"
     PERCENTAGE_INCREASE = "percentage_increase"
     PERCENTAGE_DECREASE = "percentage_decrease"
+
+
+# --- Sprint 5: Table & Staff Domain ---
+
+
+class SectorType(str, Enum):
+    """Type of sector within a branch."""
+
+    INTERIOR = "interior"
+    TERRAZA = "terraza"
+    BARRA = "barra"
+    VIP = "vip"
+
+
+class TableStatus(str, Enum):
+    """FSM states for a restaurant table."""
+
+    LIBRE = "libre"
+    OCUPADA = "ocupada"
+    PEDIDO_SOLICITADO = "pedido_solicitado"
+    PEDIDO_CUMPLIDO = "pedido_cumplido"
+    CUENTA = "cuenta"
+    INACTIVA = "inactiva"
+
+
+class ShiftType(str, Enum):
+    """Work shift for waiter assignments."""
+
+    MORNING = "morning"
+    AFTERNOON = "afternoon"
+    NIGHT = "night"
+
+
+# Table FSM transition map: current_status -> list of valid next statuses
+TABLE_TRANSITIONS: dict[str, list[str]] = {
+    TableStatus.LIBRE: [TableStatus.OCUPADA, TableStatus.INACTIVA],
+    TableStatus.OCUPADA: [TableStatus.PEDIDO_SOLICITADO, TableStatus.LIBRE],
+    TableStatus.PEDIDO_SOLICITADO: [TableStatus.PEDIDO_CUMPLIDO],
+    TableStatus.PEDIDO_CUMPLIDO: [TableStatus.CUENTA, TableStatus.PEDIDO_SOLICITADO],
+    TableStatus.CUENTA: [TableStatus.LIBRE],
+    TableStatus.INACTIVA: [TableStatus.LIBRE],
+}
+
+# Urgency score per status — used for waiter dashboard sorting
+TABLE_URGENCY_SCORE: dict[str, int] = {
+    TableStatus.CUENTA: 50,
+    TableStatus.PEDIDO_SOLICITADO: 40,
+    TableStatus.PEDIDO_CUMPLIDO: 30,
+    TableStatus.OCUPADA: 20,
+    TableStatus.LIBRE: 10,
+    TableStatus.INACTIVA: 0,
+}
+
+# Auto-prefix for table codes per sector type
+SECTOR_PREFIX_MAP: dict[str, str] = {
+    SectorType.INTERIOR: "INT",
+    SectorType.TERRAZA: "TER",
+    SectorType.BARRA: "BAR",
+    SectorType.VIP: "VIP",
+}

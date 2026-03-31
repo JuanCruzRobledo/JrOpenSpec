@@ -1,6 +1,6 @@
 change: table-staff-domain
 phase: 5
-status: ready-for-implementation
+status: ready-for-archive
 artifact_store: openspec
 source: sdd-otro/sprint-5-tables
 migrated_at: 2026-03-23
@@ -9,6 +9,6 @@ artifacts:
   spec: done
   design: done
   tasks: done
-  apply: pending
-  verify: pending
+  apply: done
+  verify: done
   archive: pending

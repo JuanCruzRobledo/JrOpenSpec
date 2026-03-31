@@ -130,9 +130,9 @@ async def _seed_branch(session, tenant: Tenant) -> Branch:
 async def _seed_sectors(session, branch: Branch) -> dict[str, Sector]:
     logger.info("Seeding sectors...")
     sector_defs = [
-        {"name": "Salón Principal", "display_order": 0},
-        {"name": "Terraza", "display_order": 1},
-        {"name": "Barra", "display_order": 2},
+        {"name": "Salón Principal", "prefix": "SP", "display_order": 0},
+        {"name": "Terraza", "prefix": "TZ", "display_order": 1},
+        {"name": "Barra", "prefix": "BA", "display_order": 2},
     ]
     sectors = {}
     for s in sector_defs:
@@ -140,7 +140,7 @@ async def _seed_sectors(session, branch: Branch) -> dict[str, Sector]:
             session,
             Sector,
             {"branch_id": branch.id, "name": s["name"]},
-            {"display_order": s["display_order"]},
+            {"prefix": s["prefix"], "display_order": s["display_order"]},
         )
         sectors[s["name"]] = sector
         if created:
@@ -156,27 +156,27 @@ async def _seed_tables(session, sectors: dict[str, Sector]) -> None:
     # Salon Principal: tables 1-10
     salon = sectors["Salón Principal"]
     for i in range(1, 11):
-        table_defs.append({"sector_id": salon.id, "number": str(i), "capacity": 4})
+        table_defs.append({"sector_id": salon.id, "number": i, "capacity": 4, "code": f"SP-{i:02d}"})
 
-    # Terraza: tables T1-T6
+    # Terraza: tables 1-6
     terraza = sectors["Terraza"]
     for i in range(1, 7):
-        table_defs.append({"sector_id": terraza.id, "number": f"T{i}", "capacity": 6})
+        table_defs.append({"sector_id": terraza.id, "number": i, "capacity": 6, "code": f"TZ-{i:02d}"})
 
-    # Barra: tables B1-B4
+    # Barra: tables 1-4
     barra = sectors["Barra"]
     for i in range(1, 5):
-        table_defs.append({"sector_id": barra.id, "number": f"B{i}", "capacity": 2})
+        table_defs.append({"sector_id": barra.id, "number": i, "capacity": 2, "code": f"BA-{i:02d}"})
 
     for t in table_defs:
         _, created = await _get_or_create(
             session,
             Table,
             {"sector_id": t["sector_id"], "number": t["number"]},
-            {"capacity": t["capacity"]},
+            {"capacity": t["capacity"], "code": t["code"]},
         )
         if created:
-            logger.info("  Created table: %s", t["number"])
+            logger.info("  Created table: %s", t["code"])
     await session.flush()
 
 

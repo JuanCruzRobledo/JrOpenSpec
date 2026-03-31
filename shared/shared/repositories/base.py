@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from typing import get_args, get_orig_bases
+import types
+from typing import get_args
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,7 +31,7 @@ class BaseRepository[T]:
     def __init_subclass__(cls, **kwargs: object) -> None:
         """Automatically resolve the model type from the generic parameter."""
         super().__init_subclass__(**kwargs)
-        for base in get_orig_bases(cls):
+        for base in types.get_original_bases(cls):
             args = get_args(base)
             if args and isinstance(args[0], type):
                 cls.model = args[0]

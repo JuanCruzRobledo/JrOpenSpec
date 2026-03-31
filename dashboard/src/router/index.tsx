@@ -19,6 +19,11 @@ const DietaryProfilesPage = lazy(() => import('@/pages/DietaryProfilesPage'));
 const CookingMethodsPage = lazy(() => import('@/pages/CookingMethodsPage'));
 const BadgesPage = lazy(() => import('@/pages/BadgesPage'));
 const SealsPage = lazy(() => import('@/pages/SealsPage'));
+const SectorsPage = lazy(() => import('@/pages/SectorsPage'));
+const TablesPage = lazy(() => import('@/pages/TablesPage'));
+const StaffPage = lazy(() => import('@/pages/StaffPage'));
+const RolesPage = lazy(() => import('@/pages/RolesPage'));
+const AssignmentsPage = lazy(() => import('@/pages/AssignmentsPage'));
 
 function PageLoader() {
   return (
@@ -109,7 +114,48 @@ export const router = createBrowserRouter([
                   </SuspenseWrapper>
                 ),
               },
+              {
+                path: 'sectores',
+                element: (
+                  <SuspenseWrapper>
+                    <SectorsPage />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'mesas',
+                element: (
+                  <SuspenseWrapper>
+                    <TablesPage />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'asignaciones',
+                element: (
+                  <SuspenseWrapper>
+                    <AssignmentsPage />
+                  </SuspenseWrapper>
+                ),
+              },
             ],
+          },
+          // Personal — no branch guard required (tenant-scoped)
+          {
+            path: 'personal',
+            element: (
+              <SuspenseWrapper>
+                <StaffPage />
+              </SuspenseWrapper>
+            ),
+          },
+          {
+            path: 'roles',
+            element: (
+              <SuspenseWrapper>
+                <RolesPage />
+              </SuspenseWrapper>
+            ),
           },
           // Menu Avanzado — no branch guard required (tenant-scoped)
           {

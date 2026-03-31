@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from shared.models.base import BaseModel
@@ -19,6 +19,10 @@ if TYPE_CHECKING:
 
 class TableSession(BaseModel):
     """Represents an active or past session at a table."""
+
+    __table_args__ = (
+        Index("ix_table_sessions_table_closed", "table_id", "closed_at"),
+    )
 
     table_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("tables.id"), nullable=False, index=True
@@ -37,6 +41,18 @@ class TableSession(BaseModel):
     )
     guest_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
+
+    # Sprint 5: order lifecycle timestamps
+    order_requested_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    order_fulfilled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    check_requested_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    duration_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Relationships
     table: Mapped[Table] = relationship("Table", back_populates="sessions")

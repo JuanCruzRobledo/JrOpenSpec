@@ -158,7 +158,7 @@ class SessionService:
             .join(Sector, Sector.id == Table.sector_id)
             .where(
                 Sector.branch_id == branch_id,
-                Table.number == table_identifier,
+                Table.number == int(table_identifier),
                 Sector.deleted_at.is_(None),
             )
             .options(joinedload(Table.sector))

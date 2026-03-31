@@ -112,6 +112,53 @@ function AwardIcon() {
   );
 }
 
+function MapPinIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
+  );
+}
+
+function TableIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="7" width="20" height="3" rx="1" />
+      <line x1="6" y1="10" x2="6" y2="20" />
+      <line x1="18" y1="10" x2="18" y2="20" />
+    </svg>
+  );
+}
+
+function ClipboardIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2" />
+      <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+    </svg>
+  );
+}
+
+function UsersIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 00-3-3.87" />
+      <path d="M16 3.13a4 4 0 010 7.75" />
+    </svg>
+  );
+}
+
+function KeyIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+    </svg>
+  );
+}
+
 interface Props {}
 
 export function Sidebar(_props: Props) {
@@ -158,6 +205,17 @@ export function Sidebar(_props: Props) {
           <SidebarItem to="/categorias" label="Categorias" icon={<GridIcon />} collapsed={collapsed} />
           <SidebarItem to="/subcategorias" label="Subcategorias" icon={<LayersIcon />} collapsed={collapsed} />
           <SidebarItem to="/productos" label="Productos" icon={<PackageIcon />} collapsed={collapsed} />
+        </SidebarGroup>
+
+        <SidebarGroup label="Salon" collapsed={collapsed}>
+          <SidebarItem to="/sectores" label="Sectores" icon={<MapPinIcon />} collapsed={collapsed} />
+          <SidebarItem to="/mesas" label="Mesas" icon={<TableIcon />} collapsed={collapsed} />
+          <SidebarItem to="/asignaciones" label="Asignaciones" icon={<ClipboardIcon />} collapsed={collapsed} />
+        </SidebarGroup>
+
+        <SidebarGroup label="Personal" collapsed={collapsed}>
+          <SidebarItem to="/personal" label="Personal" icon={<UsersIcon />} collapsed={collapsed} />
+          <SidebarItem to="/roles" label="Roles" icon={<KeyIcon />} collapsed={collapsed} />
         </SidebarGroup>
 
         <SidebarGroup label="Menu Avanzado" collapsed={collapsed}>

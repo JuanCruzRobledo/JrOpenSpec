@@ -1,11 +1,11 @@
-"""WaiterSectorAssignment model — waiter-to-sector assignment tracking."""
+"""WaiterSectorAssignment model — daily waiter-to-sector assignment by shift."""
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, func
+from sqlalchemy import BigInteger, Date, ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from shared.models.base import BaseModel
@@ -17,17 +17,15 @@ if TYPE_CHECKING:
 
 
 class WaiterSectorAssignment(BaseModel):
-    """Tracks which waiter is assigned to which sector. Partial unique on active assignments."""
+    """Daily waiter-to-sector assignment by shift."""
 
     __table_args__ = (
-        # Partial unique index: only one active assignment per user per sector
-        Index(
-            "uq_waiter_sector_active",
-            "user_id",
-            "sector_id",
-            unique=True,
-            postgresql_where="unassigned_at IS NULL",
+        UniqueConstraint(
+            "user_id", "sector_id", "date", "shift",
+            name="uq_waiter_sector_date_shift",
         ),
+        Index("ix_assignments_date_shift", "date", "shift"),
+        Index("ix_assignments_waiter_date", "user_id", "date"),
     )
 
     user_id: Mapped[int] = mapped_column(
@@ -39,12 +37,8 @@ class WaiterSectorAssignment(BaseModel):
     sector_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("sectors.id"), nullable=False, index=True
     )
-    assigned_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-    unassigned_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    date: Mapped[date] = mapped_column(Date, nullable=False)
+    shift: Mapped[str] = mapped_column(String(15), nullable=False)
 
     # Relationships
     user: Mapped[User] = relationship("User")

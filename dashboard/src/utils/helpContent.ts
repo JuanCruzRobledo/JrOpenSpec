@@ -18,7 +18,12 @@ type HelpContentKey =
   | 'dietaryProfiles'
   | 'cookingMethods'
   | 'badges'
-  | 'seals';
+  | 'seals'
+  | 'sectors'
+  | 'tables'
+  | 'staff'
+  | 'roles'
+  | 'assignments';
 
 export const helpContent: Record<HelpContentKey, HelpContent> = {
   dashboard: {
@@ -123,6 +128,57 @@ export const helpContent: Record<HelpContentKey, HelpContent> = {
       'Podes crear sellos personalizados para certificaciones especificas.',
       'Los sellos se asignan desde la pestaña "Badges/Sellos" del formulario de producto.',
       'Comunican calidad y valores a los clientes.',
+    ],
+  },
+  sectors: {
+    title: 'Gestion de Sectores',
+    description: 'Los sectores organizan el salon de tu sucursal. Cada sector agrupa mesas y puede ser de tipo interior, terraza, barra o VIP.',
+    tips: [
+      'El prefijo del sector se genera automaticamente desde el nombre.',
+      'Cada sector tiene un conteo de mesas totales y disponibles.',
+      'Eliminar un sector elimina todas las mesas que contiene.',
+      'Podes definir una capacidad maxima opcional por sector.',
+    ],
+  },
+  tables: {
+    title: 'Gestion de Mesas',
+    description: 'Administra las mesas de tu sucursal. Visualiza el estado en tiempo real y cambia el estado segun el flujo del servicio.',
+    tips: [
+      'Las mesas se actualizan cada 15 segundos automaticamente.',
+      'Los colores indican el estado: verde (libre), rojo (ocupada), amarillo (pedido solicitado), azul (pedido cumplido), violeta (cuenta), gris (inactiva).',
+      'Usa "Crear mesas" para generar varias mesas en lote para un sector.',
+      'Hace click en una mesa para cambiar su estado.',
+      'Las mesas se ordenan por urgencia: cuenta y pedido solicitado primero.',
+    ],
+  },
+  staff: {
+    title: 'Gestion de Personal',
+    description: 'Administra los miembros de tu equipo. Asigna roles y gestiona el acceso al sistema.',
+    tips: [
+      'Los roles disponibles son: Propietario, Administrador, Gerente, Mozo, Chef y Cajero.',
+      'La contraseña solo se configura al crear un nuevo miembro.',
+      'Usa el buscador para filtrar por nombre, email o rol.',
+      'El personal es compartido entre todas las sucursales del restaurante.',
+    ],
+  },
+  roles: {
+    title: 'Roles y Permisos',
+    description: 'Visualiza la matriz de permisos del sistema. Cada rol tiene un conjunto de permisos predefinidos.',
+    tips: [
+      'Los permisos son de solo lectura — se configuran desde el backend.',
+      'La marca verde indica que el rol tiene ese permiso.',
+      'Los permisos determinan que acciones puede realizar cada miembro del equipo.',
+    ],
+  },
+  assignments: {
+    title: 'Asignaciones de Mozos',
+    description: 'Asigna mozos a sectores por fecha y turno. Define quien atiende cada zona del salon.',
+    tips: [
+      'Selecciona una fecha y un turno para ver las asignaciones.',
+      'Marca las casillas para asignar un mozo a un sector.',
+      'Un mozo puede estar asignado a multiples sectores en el mismo turno.',
+      'Los turnos disponibles son: Mañana, Tarde y Noche.',
+      'Guarda los cambios con el boton "Guardar asignaciones".',
     ],
   },
 };

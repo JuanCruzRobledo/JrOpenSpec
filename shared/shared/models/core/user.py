@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, String
+from sqlalchemy import BigInteger, Boolean, Date, DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from shared.models.base import BaseModel
@@ -31,6 +31,10 @@ class User(BaseModel):
     last_login_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+
+    # Sprint 5: staff management fields
+    dni: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    hired_at: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     # Relationships
     tenant: Mapped[Tenant] = relationship("Tenant", back_populates="users")
